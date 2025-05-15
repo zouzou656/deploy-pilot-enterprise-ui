@@ -12,6 +12,7 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
 import Unauthorized from "./pages/Unauthorized";
+import Index from "./pages/Index";
 
 // Layout
 import AppLayout from "./components/layout/AppLayout";
@@ -49,18 +50,9 @@ const App = () => {
             {/* Public routes */}
             <Route path="/login" element={<Login />} />
             <Route path="/unauthorized" element={<Unauthorized />} />
+            <Route path="/" element={<Index />} />
 
             {/* Protected routes */}
-            <Route
-              path="/"
-              element={
-                <AuthGuard>
-                  <AppLayout>
-                    <Dashboard />
-                  </AppLayout>
-                </AuthGuard>
-              }
-            />
             <Route
               path="/dashboard"
               element={
