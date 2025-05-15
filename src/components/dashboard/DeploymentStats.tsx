@@ -129,7 +129,7 @@ const DeploymentStats: React.FC<DeploymentStatsProps> = ({ stats }) => {
             <div className="bg-muted/30 rounded-md p-4">
               <div className="text-sm font-medium text-muted-foreground mb-1">Success Rate</div>
               <div className="text-3xl font-bold">
-                {Math.round((stats.successful / stats.total) * 100)}%
+                {stats.total > 0 ? Math.round((stats.successful / stats.total) * 100) : 0}%
               </div>
             </div>
             <div className="bg-muted/30 rounded-md p-4">

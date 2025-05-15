@@ -69,7 +69,7 @@ const mockWeblogicConfig: WebLogicDeploymentConfig = {
 
 const useSettingsStore = create<SettingsStore>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       projectSettings: null,
       metadataConfig: null,
       weblogicConfig: null,

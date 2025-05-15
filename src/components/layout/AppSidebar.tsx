@@ -27,7 +27,7 @@ import {
 import useAuthStore from '@/stores/authStore';
 
 const AppSidebar = () => {
-  const { collapsed } = useSidebar();
+  const { open } = useSidebar();
   const location = useLocation();
   const currentPath = location.pathname;
   const { checkPermission } = useAuthStore();
@@ -99,12 +99,12 @@ const AppSidebar = () => {
 
   return (
     <Sidebar
-      className={`border-r border-border h-[calc(100vh-4rem)] ${collapsed ? 'w-16' : 'w-64'}`}
-      collapsible
+      className={`border-r border-border h-[calc(100vh-4rem)] ${!open ? 'w-16' : 'w-64'}`}
+      collapsible="icon"
     >
       <SidebarContent>
-        <SidebarGroup defaultOpen>
-          <SidebarGroupLabel className={collapsed ? 'sr-only' : ''}>
+        <SidebarGroup>
+          <SidebarGroupLabel className={!open ? 'sr-only' : ''}>
             Main Navigation
           </SidebarGroupLabel>
           
@@ -116,7 +116,7 @@ const AppSidebar = () => {
                     <SidebarMenuButton asChild>
                       <NavLink to={item.path} className={getNavLinkClass}>
                         <item.icon className="h-5 w-5" />
-                        {!collapsed && <span>{item.title}</span>}
+                        {open && <span>{item.title}</span>}
                       </NavLink>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -126,8 +126,8 @@ const AppSidebar = () => {
           </SidebarGroupContent>
         </SidebarGroup>
         
-        {!collapsed && (
-          <SidebarGroup defaultOpen>
+        {open && (
+          <SidebarGroup>
             <SidebarGroupLabel>Recent Projects</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
@@ -154,7 +154,7 @@ const AppSidebar = () => {
       </SidebarContent>
       
       {/* Version info at bottom */}
-      {!collapsed && (
+      {open && (
         <div className="mt-auto p-4 text-xs text-sidebar-foreground/70">
           <p>OSB CI/CD Platform v1.0.0</p>
         </div>

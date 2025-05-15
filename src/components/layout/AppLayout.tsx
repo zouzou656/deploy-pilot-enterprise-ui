@@ -42,7 +42,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   }, [location.pathname]);
 
   return (
-    <SidebarProvider collapsedWidth={64 /* mini width in px */}>
+    <SidebarProvider>
       <div className="min-h-screen flex flex-col">
         <AppHeader onCommandPalette={() => setShowCommandPalette(true)} />
         
