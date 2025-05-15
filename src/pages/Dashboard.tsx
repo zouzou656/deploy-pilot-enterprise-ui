@@ -5,7 +5,7 @@ import ActionCards from '@/components/dashboard/ActionCards';
 import DeploymentStats from '@/components/dashboard/DeploymentStats';
 import RecentDeployments from '@/components/dashboard/RecentDeployments';
 import EnvironmentStatus from '@/components/dashboard/EnvironmentStatus';
-import { DeploymentStats as DeploymentStatsType } from '@/types';
+import { DeploymentStats as DeploymentStatsType, Deployment } from '@/types';
 import useDeploymentStore from '@/stores/deploymentStore';
 import useSettingsStore from '@/stores/settingsStore';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,7 +28,7 @@ const Dashboard = () => {
     byEnvironment: {}
   });
 
-  const calculateStats = (deployments: typeof useDeploymentStore.getState().deployments) => {
+  const calculateStats = (deployments: Deployment[]) => {
     if (!deployments.length) return stats;
     
     const successful = deployments.filter(d => d.status === 'COMPLETED').length;
