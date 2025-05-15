@@ -22,7 +22,8 @@ import {
   FileText,
   Database,
   History,
-  Code
+  Code,
+  Link
 } from 'lucide-react';
 import useAuthStore from '@/stores/authStore';
 
@@ -44,6 +45,12 @@ const AppSidebar = () => {
       title: 'Git Management', 
       path: '/git', 
       icon: GitBranch, 
+      requiredRole: 'VIEWER' as const 
+    },
+    { 
+      title: 'API Explorer', 
+      path: '/api-explorer', 
+      icon: Link, 
       requiredRole: 'VIEWER' as const 
     },
     { 

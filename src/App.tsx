@@ -21,6 +21,7 @@ import LogsHistory from "./pages/LogsHistory";
 import MetadataManagement from "./pages/MetadataManagement";
 import CodeExplorer from "./pages/CodeExplorer";
 import Settings from "./pages/Settings";
+import ApiExplorer from "./pages/ApiExplorer";
 
 // Layout
 import AppLayout from "./components/layout/AppLayout";
@@ -77,6 +78,16 @@ const App = () => {
                 <AuthGuard>
                   <AppLayout>
                     <GitManagement />
+                  </AppLayout>
+                </AuthGuard>
+              }
+            />
+            <Route
+              path="/api-explorer"
+              element={
+                <AuthGuard requiredRole="DEVELOPER">
+                  <AppLayout>
+                    <ApiExplorer />
                   </AppLayout>
                 </AuthGuard>
               }

@@ -6,257 +6,132 @@
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-
+    --foreground: 224 71.4% 4.1%;
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-
+    --card-foreground: 224 71.4% 4.1%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-
-    --primary: 221.2 83% 53.3%;
-    --primary-foreground: 210 40% 98%;
-
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-
+    --popover-foreground: 224 71.4% 4.1%;
+    --primary: 262.1 83.3% 57.8%;
+    --primary-foreground: 210 20% 98%;
+    --secondary: 220 14.3% 95.9%;
+    --secondary-foreground: 220.9 39.3% 11%;
+    --muted: 220 14.3% 95.9%;
+    --muted-foreground: 220 8.9% 46.1%;
+    --accent: 220 14.3% 95.9%;
+    --accent-foreground: 220.9 39.3% 11%;
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-
-    --success: 142.1 70.6% 45.3%;
-    --success-foreground: 210 40% 98%;
-
-    --warning: 38 92% 50%;
-    --warning-foreground: 210 40% 98%;
-
-    --info: 221.2 83% 53.3%;
-    --info-foreground: 210 40% 98%;
-
-    --terminal: 220 13% 18%;
-    --terminal-foreground: 0 0% 90%;
-    --terminal-accent: 142.1 70.6% 45.3%;
-
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83% 53.3%;
-
+    --destructive-foreground: 210 20% 98%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 262.1 83.3% 57.8%;
     --radius: 0.5rem;
 
-    --sidebar-background: 210 40% 98%;
-    --sidebar-foreground: 222.2 84% 4.9%;
-    --sidebar-primary: 221.2 83% 53.3%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 40% 96.1%;
-    --sidebar-accent-foreground: 222.2 47.4% 11.2%;
-    --sidebar-border: 214.3 31.8% 91.4%;
-    --sidebar-ring: 221.2 83% 53.3%;
+    --sidebar: 0 0% 100%;
+    --sidebar-foreground: 224 71.4% 4.1%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-accent: 220 14.3% 95.9%;
+    --sidebar-accent-foreground: 220.9 39.3% 11%;
+    --sidebar-ring: 262.1 83.3% 57.8% / 10%;
   }
-
+ 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
+    --background: 224 71.4% 4.1%;
+    --foreground: 210 20% 98%;
+    --card: 224 71.4% 4.1%;
+    --card-foreground: 210 20% 98%;
+    --popover: 224 71.4% 4.1%;
+    --popover-foreground: 210 20% 98%;
+    --primary: 263.4 70% 50.4%;
+    --primary-foreground: 210 20% 98%;
+    --secondary: 215 27.9% 16.9%;
+    --secondary-foreground: 210 20% 98%;
+    --muted: 215 27.9% 16.9%;
+    --muted-foreground: 217.9 10.6% 64.9%;
+    --accent: 215 27.9% 16.9%;
+    --accent-foreground: 210 20% 98%;
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 210 20% 98%;
+    --border: 215 27.9% 16.9%;
+    --input: 215 27.9% 16.9%;
+    --ring: 263.4 70% 50.4%;
 
-    --success: 142.1 70.6% 45.3%;
-    --success-foreground: 210 40% 98%;
-
-    --warning: 38 92% 50%;
-    --warning-foreground: 210 40% 98%;
-
-    --info: 221.2 83% 53.3%;
-    --info-foreground: 210 40% 98%;
-
-    --terminal: 220 13% 18%;
-    --terminal-foreground: 210 40% 98%;
-    --terminal-accent: 142.1 70.6% 45.3%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
-
-    --sidebar-background: 217.2 32.6% 17.5%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 217.2 91.2% 59.8%;
-    --sidebar-primary-foreground: 222.2 47.4% 11.2%;
-    --sidebar-accent: 217.2 32.6% 17.5%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 217.2 32.6% 17.5%;
-    --sidebar-ring: 224.3 76.3% 48%;
+    --sidebar: 224 71.4% 4.1%;
+    --sidebar-foreground: 210 20% 98%;
+    --sidebar-border: 215 27.9% 16.9%;
+    --sidebar-accent: 215 27.9% 16.9%;
+    --sidebar-accent-foreground: 210 20% 98%;
+    --sidebar-ring: 263.4 70% 50.4% / 10%;
   }
 }
-
+ 
 @layer base {
   * {
     @apply border-border;
   }
   body {
     @apply bg-background text-foreground;
-    font-feature-settings: "rlig" 1, "calt" 1;
-  }
-  
-  /* Custom scrollbar */
-  ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-  
-  ::-webkit-scrollbar-track {
-    @apply bg-muted/50;
-  }
-  
-  ::-webkit-scrollbar-thumb {
-    @apply bg-muted-foreground/30 rounded-full hover:bg-muted-foreground/50 transition-all;
-  }
-
-  /* Terminal styling */
-  .terminal {
-    @apply font-mono bg-terminal text-terminal-foreground rounded-md p-4 overflow-auto;
-  }
-
-  .terminal-success {
-    @apply text-success;
-  }
-
-  .terminal-error {
-    @apply text-destructive;
-  }
-
-  .terminal-warning {
-    @apply text-warning;
-  }
-
-  .terminal-info {
-    @apply text-info;
-  }
-
-  .terminal-command {
-    @apply text-terminal-accent font-bold;
-  }
-
-  .terminal-cursor {
-    @apply inline-block w-2 h-4 bg-terminal-foreground align-middle animate-blink;
-  }
-
-  /* Code block styling */
-  .code-block {
-    @apply font-mono text-sm p-4 rounded-md overflow-x-auto;
-  }
-
-  .code-block pre {
-    @apply m-0;
-  }
-
-  /* Status indicators */
-  .status-dot {
-    @apply inline-block h-2 w-2 rounded-full;
-  }
-  
-  .status-dot.active {
-    @apply bg-success;
-  }
-  
-  .status-dot.inactive {
-    @apply bg-destructive;
-  }
-  
-  .status-dot.pending {
-    @apply bg-warning animate-pulse-opacity;
   }
 }
 
-@layer components {
-  /* Theme toggle button */
-  .theme-toggle {
-    @apply rounded-full p-2 hover:bg-muted/80 transition-colors;
-  }
+/* Swagger UI custom styles */
+.swagger-wrapper {
+  @apply overflow-hidden;
+}
 
-  /* Command palette */
-  .command-palette {
-    @apply fixed inset-x-0 top-16 mx-auto max-w-2xl bg-popover text-popover-foreground shadow-lg rounded-md overflow-hidden z-50 border animate-fade-in;
-  }
+/* Light theme (default) */
+.swagger-ui .opblock.opblock-get {
+  @apply border border-blue-200 bg-blue-50;
+}
+.swagger-ui .opblock.opblock-post {
+  @apply border border-green-200 bg-green-50;
+}
+.swagger-ui .opblock.opblock-put {
+  @apply border border-amber-200 bg-amber-50;
+}
+.swagger-ui .opblock.opblock-delete {
+  @apply border border-red-200 bg-red-50;
+}
 
-  /* Dashboard cards */
-  .dashboard-card {
-    @apply bg-card text-card-foreground rounded-lg shadow-sm border p-6 transition-all hover:shadow-md;
-  }
-
-  /* Status badges */
-  .status-badge {
-    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
-  }
-
-  .status-badge-success {
-    @apply bg-success/20 text-success;
-  }
-
-  .status-badge-error {
-    @apply bg-destructive/20 text-destructive;
-  }
-
-  .status-badge-warning {
-    @apply bg-warning/20 text-warning;
-  }
-
-  .status-badge-info {
-    @apply bg-info/20 text-info;
-  }
-
-  /* Log line */
-  .log-line {
-    @apply py-1 border-b border-muted/30 last:border-b-0;
-  }
-
-  /* JSON editor */
-  .json-editor {
-    @apply font-mono text-sm bg-muted/30 p-4 rounded-md;
-  }
-
-  /* Diff view */
-  .diff-view {
-    @apply font-mono text-sm;
-  }
-
-  .diff-view .added {
-    @apply bg-success/20 text-success;
-  }
-
-  .diff-view .removed {
-    @apply bg-destructive/20 text-destructive;
-  }
-
-  /* Git branch tag */
-  .git-branch-tag {
-    @apply inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-secondary text-secondary-foreground;
-  }
-
-  /* Company branding */
-  .company-logo {
-    @apply h-8 w-auto;
-  }
+/* Dark theme overrides */
+.swagger-dark .swagger-ui {
+  @apply bg-card text-foreground;
+}
+.swagger-dark .swagger-ui .info {
+  @apply text-foreground;
+}
+.swagger-dark .swagger-ui .info h2,
+.swagger-dark .swagger-ui .info h3,
+.swagger-dark .swagger-ui .info p,
+.swagger-dark .swagger-ui .info a {
+  @apply text-foreground;
+}
+.swagger-dark .swagger-ui .opblock .opblock-summary-description,
+.swagger-dark .swagger-ui .opblock-description-wrapper p,
+.swagger-dark .swagger-ui .responses-inner h4,
+.swagger-dark .swagger-ui .responses-inner h5,
+.swagger-dark .swagger-ui .tab li,
+.swagger-dark .swagger-ui table thead tr td,
+.swagger-dark .swagger-ui table thead tr th {
+  @apply text-foreground;
+}
+.swagger-dark .swagger-ui .opblock.opblock-get {
+  @apply border border-blue-800 bg-blue-950;
+}
+.swagger-dark .swagger-ui .opblock.opblock-post {
+  @apply border border-green-800 bg-green-950;
+}
+.swagger-dark .swagger-ui .opblock.opblock-put {
+  @apply border border-amber-800 bg-amber-950;
+}
+.swagger-dark .swagger-ui .opblock.opblock-delete {
+  @apply border border-red-800 bg-red-950;
+}
+.swagger-dark .swagger-ui select {
+  @apply bg-secondary text-foreground border-border;
+}
+.swagger-dark .swagger-ui input[type=text] {
+  @apply bg-secondary text-foreground border-border;
+}
+.swagger-dark .swagger-ui textarea {
+  @apply bg-secondary text-foreground border-border;
 }
