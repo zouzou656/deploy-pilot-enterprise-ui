@@ -59,7 +59,6 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         {showCommandPalette && (
           <CommandPalette 
             onClose={() => setShowCommandPalette(false)} 
-            className="fixed inset-0 z-50 flex items-start justify-center pt-16 sm:pt-24"
           />
         )}
       </div>

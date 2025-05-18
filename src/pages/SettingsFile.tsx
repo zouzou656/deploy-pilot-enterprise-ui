@@ -6,7 +6,7 @@ import PageHeader from '@/components/ui-custom/PageHeader';
 import { Save, FileJson, Copy, Download } from 'lucide-react';
 import CodeEditor from '@/components/ui-custom/CodeEditor';
 import { useToast } from '@/hooks/use-toast';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
 const SettingsFile = () => {
   const { toast } = useToast();
@@ -242,29 +242,25 @@ const SettingsFile = () => {
             </CardDescription>
           </div>
           <div className="mt-4 md:mt-0">
-            <TabsList>
-              <TabsTrigger 
-                value="default" 
-                onClick={() => handleTemplateChange('default')}
-                className={template === 'default' ? 'bg-primary text-primary-foreground' : ''}
-              >
-                Standard
-              </TabsTrigger>
-              <TabsTrigger 
-                value="minimal" 
-                onClick={() => handleTemplateChange('minimal')}
-                className={template === 'minimal' ? 'bg-primary text-primary-foreground' : ''}
-              >
-                Minimal
-              </TabsTrigger>
-              <TabsTrigger 
-                value="extended" 
-                onClick={() => handleTemplateChange('extended')}
-                className={template === 'extended' ? 'bg-primary text-primary-foreground' : ''}
-              >
-                Extended
-              </TabsTrigger>
-            </TabsList>
+            {/* Wrap TabsList in a Tabs component */}
+            <Tabs value={template} onValueChange={handleTemplateChange}>
+              <TabsList>
+                <TabsTrigger value="default">
+                  Standard
+                </TabsTrigger>
+                <TabsTrigger value="minimal">
+                  Minimal
+                </TabsTrigger>
+                <TabsTrigger value="extended">
+                  Extended
+                </TabsTrigger>
+              </TabsList>
+              
+              {/* Add TabsContent components for each tab, even though we don't directly display them */}
+              <TabsContent value="default" className="hidden"></TabsContent>
+              <TabsContent value="minimal" className="hidden"></TabsContent>
+              <TabsContent value="extended" className="hidden"></TabsContent>
+            </Tabs>
           </div>
         </CardHeader>
         <CardContent>

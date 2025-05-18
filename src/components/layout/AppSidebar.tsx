@@ -1,141 +1,132 @@
-
 import React from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  useSidebar,
-} from '@/components/ui/sidebar';
-import {
-  LayoutDashboard,
-  GitBranch,
-  FileText,
-  Package,
-  Server,
+import { NavLink } from 'react-router-dom';
+import { Sidebar, SidebarSection, SidebarTrigger } from '@/components/ui/sidebar';
+import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { 
+  Home, 
+  Settings, 
+  Package, 
+  Server, 
+  FileText, 
+  BarChart, 
+  Users, 
   History,
-  Code,
-  Settings,
-  FileSearch
+  Menu,
+  X
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import useAuthStore from '@/stores/authStore';
 
 const AppSidebar = () => {
-  const { isCollapsed } = useSidebar(); // Fixed: using isCollapsed instead of collapsed
-  const location = useLocation();
-  const { checkPermission } = useAuthStore();
+  const { user } = useAuthStore();
+  const [activeTab, setActiveTab] = React.useState('general');
 
-  // For active route highlighting
-  const isActive = (path: string) => location.pathname === path;
-
-  // For active route class
-  const getNavLinkClasses = ({ isActive }: { isActive: boolean }) =>
-    isActive
-      ? 'w-full flex items-center px-3 py-2 font-medium rounded-md bg-sidebar-accent text-sidebar-accent-foreground'
-      : 'w-full flex items-center px-3 py-2 text-sidebar-foreground hover:bg-sidebar-accent/50 rounded-md';
-
-  const menuItems = [
-    {
-      label: 'Dashboard',
-      icon: LayoutDashboard,
-      path: '/dashboard',
-      requiredRole: null,
+  const navItems = [
+    { 
+      section: 'general',
+      items: [
+        { name: 'Dashboard', path: '/', icon: <Home className="h-5 w-5" /> },
+        { name: 'Projects', path: '/projects', icon: <Package className="h-5 w-5" /> },
+        { name: 'Deployments', path: '/deployments', icon: <Server className="h-5 w-5" /> },
+        { name: 'Logs', path: '/logs', icon: <History className="h-5 w-5" /> },
+      ]
     },
     {
-      label: 'Git Management',
-      icon: GitBranch,
-      path: '/git',
-      requiredRole: null,
-    },
-    {
-      label: 'Settings File',
-      icon: FileText,
-      path: '/settings-file',
-      requiredRole: null,
-    },
-    {
-      label: 'JAR Generation',
-      icon: Package,
-      path: '/jar-generation',
-      requiredRole: null,
-    },
-    {
-      label: 'WebLogic Deployment',
-      icon: Server,
-      path: '/weblogic-deployment',
-      requiredRole: null,
-    },
-    {
-      label: 'Logs & History',
-      icon: History,
-      path: '/logs',
-      requiredRole: null,
-    },
-    {
-      label: 'Code Explorer',
-      icon: Code,
-      path: '/code-explorer',
-      requiredRole: null,
-    },
-    {
-      label: 'API Explorer',
-      icon: FileSearch,
-      path: '/api-explorer',
-      requiredRole: 'DEVELOPER',
-    },
-    {
-      label: 'Settings',
-      icon: Settings,
-      path: '/settings',
-      requiredRole: 'ADMIN',
-    },
+      section: 'config',
+      items: [
+        { name: 'Settings', path: '/settings', icon: <Settings className="h-5 w-5" /> },
+        { name: 'Configuration', path: '/settings/file', icon: <FileText className="h-5 w-5" /> },
+        { name: 'Analytics', path: '/analytics', icon: <BarChart className="h-5 w-5" /> },
+        { name: 'Team', path: '/team', icon: <Users className="h-5 w-5" /> },
+      ]
+    }
   ];
 
   return (
-    <Sidebar
-      className={`border-r ${
-        isCollapsed ? 'w-[60px]' : 'w-[220px]'
-      } transition-all duration-300`}
-      // Fixed: collapsible type should be "icon", "offcanvas", or "none"
-      collapsible="icon"
-    >
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel className={isCollapsed ? 'sr-only' : ''}>
-            Navigation
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {menuItems.map((item) => {
-                // Fixed: ensuring checkPermission is called with a proper Role type or null
-                const permitted =
-                  item.requiredRole === null || (item.requiredRole && checkPermission(item.requiredRole as 'ADMIN' | 'DEVELOPER' | 'USER'));
-                if (!permitted) return null;
-
-                return (
-                  <SidebarMenuItem key={item.path}>
-                    <SidebarMenuButton asChild>
-                      <NavLink
-                        to={item.path}
-                        end
-                        className={getNavLinkClasses}
-                      >
-                        <item.icon className={`h-[18px] w-[18px] ${!isCollapsed ? 'mr-2' : ''}`} />
-                        {!isCollapsed && <span>{item.label}</span>}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
+    <Sidebar>
+      <div className="flex h-16 items-center border-b px-4">
+        <SidebarTrigger asChild>
+          <Button variant="outline" size="icon" className="md:hidden">
+            <Menu className="h-5 w-5" />
+            <X className="h-5 w-5" />
+            <span className="sr-only">Toggle Sidebar</span>
+          </Button>
+        </SidebarTrigger>
+        <div className="flex items-center gap-2 ml-2 md:ml-0">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="h-6 w-6"
+          >
+            <path d="M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3" />
+          </svg>
+          <span className="font-semibold text-lg">OSB Admin</span>
+        </div>
+      </div>
+      
+      <ScrollArea className="h-[calc(100vh-4rem)]">
+        <div className="p-4">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid grid-cols-2 mb-4">
+              <TabsTrigger value="general">General</TabsTrigger>
+              <TabsTrigger value="config">Config</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          
+          <div className="space-y-6">
+            {navItems.map((section) => (
+              <div 
+                key={section.section} 
+                className={cn(
+                  "space-y-1",
+                  section.section !== activeTab && "hidden"
+                )}
+              >
+                <SidebarSection>
+                  {section.items.map((item) => (
+                    <NavLink
+                      key={item.path}
+                      to={item.path}
+                      className={({ isActive }) =>
+                        cn(
+                          "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+                          isActive 
+                            ? "bg-accent text-accent-foreground" 
+                            : "hover:bg-accent hover:text-accent-foreground"
+                        )
+                      }
+                    >
+                      {item.icon}
+                      {item.name}
+                    </NavLink>
+                  ))}
+                </SidebarSection>
+              </div>
+            ))}
+          </div>
+          
+          {user && (
+            <div className="mt-6 pt-6 border-t">
+              <div className="flex items-center gap-3 rounded-md px-3 py-2">
+                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                  {user.name.charAt(0)}
+                </div>
+                <div>
+                  <div className="text-sm font-medium">{user.name}</div>
+                  <div className="text-xs text-muted-foreground">{user.email}</div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </ScrollArea>
     </Sidebar>
   );
 };
