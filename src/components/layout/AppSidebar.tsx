@@ -5,7 +5,6 @@ import {
   Sidebar, 
   SidebarMenu, 
   SidebarMenuItem, 
-  SidebarMenuButton,
   SidebarTrigger,
   SidebarContent,
   SidebarGroup,
@@ -109,7 +108,7 @@ const AppSidebar = () => {
                               to={item.path}
                               className={({ isActive }) =>
                                 cn(
-                                  "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+                                  "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors w-full",
                                   isActive 
                                     ? "bg-accent text-accent-foreground" 
                                     : "hover:bg-accent hover:text-accent-foreground"
@@ -117,7 +116,7 @@ const AppSidebar = () => {
                               }
                             >
                               {item.icon}
-                              {item.name}
+                              <span>{item.name}</span>
                             </NavLink>
                           </SidebarMenuItem>
                         ))}
