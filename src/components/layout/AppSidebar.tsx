@@ -105,22 +105,20 @@ const AppSidebar = () => {
                       <SidebarMenu>
                         {section.items.map((item) => (
                           <SidebarMenuItem key={item.path}>
-                            <SidebarMenuButton asChild>
-                              <NavLink
-                                to={item.path}
-                                className={({ isActive }) =>
-                                  cn(
-                                    "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
-                                    isActive 
-                                      ? "bg-accent text-accent-foreground" 
-                                      : "hover:bg-accent hover:text-accent-foreground"
-                                  )
-                                }
-                              >
-                                {item.icon}
-                                {item.name}
-                              </NavLink>
-                            </SidebarMenuButton>
+                            <NavLink
+                              to={item.path}
+                              className={({ isActive }) =>
+                                cn(
+                                  "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+                                  isActive 
+                                    ? "bg-accent text-accent-foreground" 
+                                    : "hover:bg-accent hover:text-accent-foreground"
+                                )
+                              }
+                            >
+                              {item.icon}
+                              {item.name}
+                            </NavLink>
                           </SidebarMenuItem>
                         ))}
                       </SidebarMenu>
