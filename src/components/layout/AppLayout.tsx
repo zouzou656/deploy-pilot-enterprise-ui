@@ -57,7 +57,10 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         </div>
 
         {showCommandPalette && (
-          <CommandPalette onClose={() => setShowCommandPalette(false)} />
+          <CommandPalette 
+            onClose={() => setShowCommandPalette(false)} 
+            className="fixed inset-0 z-50 flex items-start justify-center pt-16 sm:pt-24"
+          />
         )}
       </div>
     </SidebarProvider>

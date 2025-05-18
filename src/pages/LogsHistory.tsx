@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { 
@@ -355,7 +354,19 @@ const LogsHistory = () => {
             </DialogTitle>
             <DialogDescription className="flex items-center justify-between">
               <span>{selectedLog?.date} • {selectedLog?.target}</span>
-              {selectedLog && getStatusBadge(selectedLog.status)}
+              {selectedLog && 
+                <Badge 
+                  variant="outline" 
+                  className={
+                    selectedLog.status === 'success' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100 border-green-200 dark:border-green-800' :
+                    selectedLog.status === 'warning' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-100 border-amber-200 dark:border-amber-800' :
+                    selectedLog.status === 'error' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100 border-red-200 dark:border-red-800' :
+                    'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100 border-blue-200 dark:border-blue-800'
+                  }
+                >
+                  {selectedLog.status.charAt(0).toUpperCase() + selectedLog.status.slice(1)}
+                </Badge>
+              }
             </DialogDescription>
           </DialogHeader>
           
@@ -449,7 +460,7 @@ const LogsHistory = () => {
               <TabsContent value="terminal" className="flex-1 overflow-hidden">
                 <div className="h-[60vh] border rounded-md overflow-hidden">
                   <TerminalConsole
-                    content={selectedLog.details?.logs.map(log => `${log.time} [${log.level}] ${log.message}`).join('\n') || ''}
+                    logs={selectedLog.details?.logs.map(log => `${log.time} [${log.level}] ${log.message}`).join('\n')}
                   />
                 </div>
               </TabsContent>

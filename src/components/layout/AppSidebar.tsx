@@ -26,7 +26,7 @@ import {
 import useAuthStore from '@/stores/authStore';
 
 const AppSidebar = () => {
-  const { collapsed } = useSidebar();
+  const { isCollapsed } = useSidebar(); // Fixed: using isCollapsed instead of collapsed
   const location = useLocation();
   const { checkPermission } = useAuthStore();
 
@@ -99,20 +99,22 @@ const AppSidebar = () => {
   return (
     <Sidebar
       className={`border-r ${
-        collapsed ? 'w-[60px]' : 'w-[220px]'
+        isCollapsed ? 'w-[60px]' : 'w-[220px]'
       } transition-all duration-300`}
-      collapsible
+      // Fixed: collapsible type should be "icon", "offcanvas", or "none"
+      collapsible="icon"
     >
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel className={collapsed ? 'sr-only' : ''}>
+          <SidebarGroupLabel className={isCollapsed ? 'sr-only' : ''}>
             Navigation
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {menuItems.map((item) => {
+                // Fixed: ensuring checkPermission is called with a proper Role type or null
                 const permitted =
-                  item.requiredRole === null || checkPermission(item.requiredRole);
+                  item.requiredRole === null || (item.requiredRole && checkPermission(item.requiredRole as 'ADMIN' | 'DEVELOPER' | 'USER'));
                 if (!permitted) return null;
 
                 return (
@@ -123,8 +125,8 @@ const AppSidebar = () => {
                         end
                         className={getNavLinkClasses}
                       >
-                        <item.icon className={`h-[18px] w-[18px] ${!collapsed ? 'mr-2' : ''}`} />
-                        {!collapsed && <span>{item.label}</span>}
+                        <item.icon className={`h-[18px] w-[18px] ${!isCollapsed ? 'mr-2' : ''}`} />
+                        {!isCollapsed && <span>{item.label}</span>}
                       </NavLink>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

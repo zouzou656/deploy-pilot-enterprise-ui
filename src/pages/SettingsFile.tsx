@@ -6,7 +6,7 @@ import PageHeader from '@/components/ui-custom/PageHeader';
 import { Save, FileJson, Copy, Download } from 'lucide-react';
 import CodeEditor from '@/components/ui-custom/CodeEditor';
 import { useToast } from '@/hooks/use-toast';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const SettingsFile = () => {
   const { toast } = useToast();
@@ -43,7 +43,35 @@ const SettingsFile = () => {
   const [template, setTemplate] = useState<string>('default');
 
   const templates = {
-    default: settings,
+    default: `{
+  "project": {
+    "name": "OSB Integration",
+    "version": "1.0.0"
+  },
+  "environment": {
+    "development": {
+      "weblogic": {
+        "host": "dev-weblogic.example.com",
+        "port": 7001,
+        "username": "weblogic"
+      }
+    },
+    "testing": {
+      "weblogic": {
+        "host": "test-weblogic.example.com",
+        "port": 7001,
+        "username": "weblogic"
+      }
+    },
+    "production": {
+      "weblogic": {
+        "host": "prod-weblogic.example.com",
+        "port": 7001,
+        "username": "weblogic"
+      }
+    }
+  }
+}`,
     minimal: `{
   "project": {
     "name": "OSB Integration",
@@ -202,7 +230,7 @@ const SettingsFile = () => {
         description="Configure deployment settings for OSB integration projects"
       />
       
-      <Card>
+      <Card className="overflow-hidden">
         <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between pb-2">
           <div>
             <CardTitle className="flex items-center gap-2">

@@ -11,7 +11,6 @@ import {
   FileInput, 
   Check 
 } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -19,6 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import PageHeader from '@/components/ui-custom/PageHeader';
 import useDeploymentStore from '@/stores/deploymentStore';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 const JarGeneration = () => {
   const [selectedProject, setSelectedProject] = useState('OSB Main Integration');
@@ -93,14 +93,25 @@ const JarGeneration = () => {
     setIsGenerating(true);
     
     // Simulate generating the JAR
-    await generateJar(selectedProject, selectedBranch);
-    
-    toast({
-      title: "JAR Generation Successful",
-      description: `${selectedProject} JAR v${version} has been generated successfully.`,
-    });
-    
-    setIsGenerating(false);
+    try {
+      await generateJar(selectedProject, selectedBranch);
+      
+      toast({
+        title: "JAR Generation Successful",
+        description: `${selectedProject} JAR v${version} has been generated successfully.`,
+      });
+      
+      // Optional: Navigate to the jar viewer with the new jar name
+      navigate(`/jar-viewer/${encodeURIComponent(`${selectedProject.toLowerCase().replace(/\s+/g, '-')}-${version}.jar`)}`);
+    } catch (error) {
+      toast({
+        title: "JAR Generation Failed",
+        description: "There was an error generating the JAR. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const handleViewJar = (jarName: string) => {
@@ -116,9 +127,12 @@ const JarGeneration = () => {
       />
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
+        <Card className="overflow-hidden">
           <CardHeader>
-            <CardTitle>Generate New JAR</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5" />
+              Generate New JAR
+            </CardTitle>
             <CardDescription>Configure and build a new JAR package</CardDescription>
           </CardHeader>
           <CardContent>
@@ -167,29 +181,29 @@ const JarGeneration = () => {
               </div>
 
               <div className="space-y-3">
-                <Label>File Selection Strategy</Label>
+                <Label className="text-base font-medium">File Selection Strategy</Label>
                 <RadioGroup 
                   value={selectedStrategy} 
                   onValueChange={setSelectedStrategy}
                   className="space-y-2"
                 >
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-2 p-2 rounded hover:bg-muted/50">
                     <RadioGroupItem value="manual" id="manual" />
-                    <Label htmlFor="manual" className="flex items-center">
+                    <Label htmlFor="manual" className="flex items-center cursor-pointer">
                       <FileInput className="h-4 w-4 mr-2" />
                       Manual file selection
                     </Label>
                   </div>
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-2 p-2 rounded hover:bg-muted/50">
                     <RadioGroupItem value="recent" id="recent" />
-                    <Label htmlFor="recent" className="flex items-center">
+                    <Label htmlFor="recent" className="flex items-center cursor-pointer">
                       <Files className="h-4 w-4 mr-2" />
                       All files from latest commit
                     </Label>
                   </div>
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-2 p-2 rounded hover:bg-muted/50">
                     <RadioGroupItem value="commits" id="commits" />
-                    <Label htmlFor="commits" className="flex items-center">
+                    <Label htmlFor="commits" className="flex items-center cursor-pointer">
                       <GitCommit className="h-4 w-4 mr-2" />
                       Choose specific commits
                     </Label>
@@ -199,19 +213,21 @@ const JarGeneration = () => {
               
               {selectedStrategy === 'manual' && (
                 <div className="space-y-3 border rounded-md p-3 bg-muted/20">
-                  <Label>Select Files to Include</Label>
-                  <div className="space-y-2 max-h-60 overflow-y-auto p-2">
-                    {availableFiles.map((file) => (
-                      <div key={file} className="flex items-center space-x-2">
-                        <Checkbox 
-                          id={`file-${file}`} 
-                          checked={selectedFiles.includes(file)}
-                          onCheckedChange={() => handleFileToggle(file)}
-                        />
-                        <Label htmlFor={`file-${file}`} className="text-sm">{file}</Label>
-                      </div>
-                    ))}
-                  </div>
+                  <Label className="text-base">Files to Include</Label>
+                  <ScrollArea className="h-[200px] rounded p-1">
+                    <div className="space-y-2 p-2">
+                      {availableFiles.map((file) => (
+                        <div key={file} className="flex items-center space-x-2 px-2 py-1.5 hover:bg-muted/50 rounded">
+                          <Checkbox 
+                            id={`file-${file}`} 
+                            checked={selectedFiles.includes(file)}
+                            onCheckedChange={() => handleFileToggle(file)}
+                          />
+                          <Label htmlFor={`file-${file}`} className="text-sm cursor-pointer">{file}</Label>
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
                   <div className="flex justify-between text-sm text-muted-foreground">
                     <span>{selectedFiles.length} files selected</span>
                     <span>
@@ -239,24 +255,26 @@ const JarGeneration = () => {
               
               {selectedStrategy === 'commits' && (
                 <div className="space-y-3 border rounded-md p-3 bg-muted/20">
-                  <Label>Select Commits to Include</Label>
-                  <div className="space-y-2 max-h-60 overflow-y-auto p-2">
-                    {commits.map((commit) => (
-                      <div key={commit.id} className="flex items-start space-x-2 pb-2 border-b last:border-0">
-                        <Checkbox 
-                          id={`commit-${commit.id}`} 
-                          checked={selectedCommits.includes(commit.id)}
-                          onCheckedChange={() => handleCommitToggle(commit.id)}
-                          className="mt-0.5"
-                        />
-                        <div>
-                          <Label htmlFor={`commit-${commit.id}`} className="font-mono text-xs">{commit.id}</Label>
-                          <p className="text-sm">{commit.message}</p>
-                          <p className="text-xs text-muted-foreground">{commit.date}</p>
+                  <Label className="text-base">Commits to Include</Label>
+                  <ScrollArea className="h-[200px] rounded p-1">
+                    <div className="space-y-2">
+                      {commits.map((commit) => (
+                        <div key={commit.id} className="flex items-start space-x-2 p-2 hover:bg-muted/50 rounded border-b last:border-0">
+                          <Checkbox 
+                            id={`commit-${commit.id}`} 
+                            checked={selectedCommits.includes(commit.id)}
+                            onCheckedChange={() => handleCommitToggle(commit.id)}
+                            className="mt-0.5"
+                          />
+                          <div>
+                            <Label htmlFor={`commit-${commit.id}`} className="font-mono text-xs">{commit.id}</Label>
+                            <p className="text-sm">{commit.message}</p>
+                            <p className="text-xs text-muted-foreground">{commit.date}</p>
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
                 </div>
               )}
               
@@ -266,7 +284,13 @@ const JarGeneration = () => {
                 className="w-full"
               >
                 {isGenerating ? (
-                  <>Generating JAR...</>
+                  <span className="flex items-center">
+                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Generating JAR...
+                  </span>
                 ) : (
                   <>
                     <Package className="mr-2 h-4 w-4" />
@@ -278,42 +302,47 @@ const JarGeneration = () => {
           </CardContent>
         </Card>
         
-        <Card>
+        <Card className="overflow-hidden">
           <CardHeader>
-            <CardTitle>Recent JARs</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <FileSearch className="h-5 w-5" />
+              Recent JARs
+            </CardTitle>
             <CardDescription>Previously generated JAR packages</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {recentJars.map((jar) => (
-                <div key={jar.name} className="flex justify-between items-center p-3 border rounded hover:bg-muted/40 transition-colors">
-                  <div className="space-y-1">
-                    <p className="font-medium flex items-center">
-                      <Package className="h-4 w-4 mr-2 text-muted-foreground" />
-                      {jar.name}
-                    </p>
-                    <div className="flex items-center text-xs text-muted-foreground gap-2">
-                      <span>{jar.date}</span>
-                      <span>•</span>
-                      <span>{jar.size}</span>
+            <ScrollArea className="h-[400px]">
+              <div className="space-y-4">
+                {recentJars.map((jar) => (
+                  <div key={jar.name} className="flex justify-between items-center p-3 border rounded hover:bg-muted/40 transition-colors">
+                    <div className="space-y-1">
+                      <p className="font-medium flex items-center">
+                        <Package className="h-4 w-4 mr-2 text-muted-foreground" />
+                        {jar.name}
+                      </p>
+                      <div className="flex items-center text-xs text-muted-foreground gap-2">
+                        <span>{jar.date}</span>
+                        <span>•</span>
+                        <span>{jar.size}</span>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleViewJar(jar.name)}
+                      >
+                        <FileSearch className="h-4 w-4 mr-1" />
+                        View
+                      </Button>
+                      <Button variant="outline" size="sm">
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
-                  <div className="flex gap-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => handleViewJar(jar.name)}
-                    >
-                      <FileSearch className="h-4 w-4 mr-1" />
-                      View
-                    </Button>
-                    <Button variant="outline" size="sm">
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            </ScrollArea>
           </CardContent>
         </Card>
       </div>

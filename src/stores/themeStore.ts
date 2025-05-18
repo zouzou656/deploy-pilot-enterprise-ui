@@ -36,10 +36,12 @@ const useThemeStore = create<ThemeStore>()(
           const newDarkMode = !state.theme.darkMode;
           
           // Toggle dark mode class on document
-          if (newDarkMode) {
-            document.documentElement.classList.add('dark');
-          } else {
-            document.documentElement.classList.remove('dark');
+          if (typeof document !== 'undefined') {
+            if (newDarkMode) {
+              document.documentElement.classList.add('dark');
+            } else {
+              document.documentElement.classList.remove('dark');
+            }
           }
           
           return {
@@ -54,10 +56,12 @@ const useThemeStore = create<ThemeStore>()(
       setDarkMode: (darkMode) => {
         set((state) => {
           // Set dark mode class on document
-          if (darkMode) {
-            document.documentElement.classList.add('dark');
-          } else {
-            document.documentElement.classList.remove('dark');
+          if (typeof document !== 'undefined') {
+            if (darkMode) {
+              document.documentElement.classList.add('dark');
+            } else {
+              document.documentElement.classList.remove('dark');
+            }
           }
           
           return {
@@ -86,11 +90,13 @@ const useThemeStore = create<ThemeStore>()(
 
 // Initialize theme based on stored preference
 const initializeTheme = () => {
-  const { theme } = useThemeStore.getState();
-  if (theme.darkMode) {
-    document.documentElement.classList.add('dark');
-  } else {
-    document.documentElement.classList.remove('dark');
+  if (typeof window !== 'undefined') {
+    const { theme } = useThemeStore.getState();
+    if (theme.darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
   }
 };
 
