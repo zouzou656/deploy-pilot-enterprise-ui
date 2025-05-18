@@ -7,6 +7,8 @@ interface ThemeStore {
   theme: ThemeConfig;
   setTheme: (theme: Partial<ThemeConfig>) => void;
   toggleDarkMode: () => void;
+  setDarkMode: (darkMode: boolean) => void;
+  setCompanyName: (name: string) => void;
 }
 
 const defaultTheme: ThemeConfig = {
@@ -47,6 +49,33 @@ const useThemeStore = create<ThemeStore>()(
             }
           };
         });
+      },
+
+      setDarkMode: (darkMode) => {
+        set((state) => {
+          // Set dark mode class on document
+          if (darkMode) {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+          
+          return {
+            theme: {
+              ...state.theme,
+              darkMode
+            }
+          };
+        });
+      },
+
+      setCompanyName: (companyName) => {
+        set((state) => ({
+          theme: {
+            ...state.theme,
+            companyName
+          }
+        }));
       }
     }),
     {

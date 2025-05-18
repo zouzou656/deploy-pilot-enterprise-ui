@@ -16,9 +16,9 @@ import Index from "./pages/Index";
 import GitManagement from "./pages/GitManagement";
 import SettingsFile from "./pages/SettingsFile";
 import JarGeneration from "./pages/JarGeneration";
+import JarViewer from "./pages/JarViewer";
 import WeblogicDeployment from "./pages/WeblogicDeployment";
 import LogsHistory from "./pages/LogsHistory";
-import MetadataManagement from "./pages/MetadataManagement";
 import CodeExplorer from "./pages/CodeExplorer";
 import Settings from "./pages/Settings";
 import ApiExplorer from "./pages/ApiExplorer";
@@ -113,6 +113,16 @@ const App = () => {
               }
             />
             <Route
+              path="/jar-viewer/:jarName"
+              element={
+                <AuthGuard>
+                  <AppLayout>
+                    <JarViewer />
+                  </AppLayout>
+                </AuthGuard>
+              }
+            />
+            <Route
               path="/weblogic-deployment"
               element={
                 <AuthGuard>
@@ -128,16 +138,6 @@ const App = () => {
                 <AuthGuard>
                   <AppLayout>
                     <LogsHistory />
-                  </AppLayout>
-                </AuthGuard>
-              }
-            />
-            <Route
-              path="/metadata"
-              element={
-                <AuthGuard>
-                  <AppLayout>
-                    <MetadataManagement />
                   </AppLayout>
                 </AuthGuard>
               }
