@@ -5,7 +5,7 @@ import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { CommandIcon, LogOut, Settings, User, Search, Menu } from 'lucide-react';
+import { CommandIcon, LogOut, Settings, User, Menu } from 'lucide-react';
 import useAuthStore from '@/stores/authStore';
 import useThemeStore from '@/stores/themeStore';
 
