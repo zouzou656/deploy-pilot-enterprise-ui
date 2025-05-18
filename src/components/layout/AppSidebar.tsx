@@ -58,7 +58,7 @@ const AppSidebar = () => {
     <Sidebar>
       <div className="flex h-16 items-center border-b px-4">
         <SidebarTrigger asChild>
-          <Button variant="outline" size="icon" className="md:hidden" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
+          <Button variant="outline" size="icon" className="md:hidden">
             {isSidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             <span className="sr-only">Toggle Sidebar</span>
           </Button>
