@@ -5,7 +5,7 @@ import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { CommandIcon, LogOut, Settings, User, Search } from 'lucide-react';
+import { CommandIcon, LogOut, Settings, User, Search, Menu } from 'lucide-react';
 import useAuthStore from '@/stores/authStore';
 import useThemeStore from '@/stores/themeStore';
 
@@ -24,7 +24,12 @@ const AppHeader: React.FC<AppHeaderProps> = ({ onCommandPalette }) => {
 
   return (
     <header className="sticky top-0 z-30 bg-background border-b flex h-16 items-center px-4 lg:px-6">
-      <SidebarTrigger className="mr-4" />
+      <SidebarTrigger asChild>
+        <Button variant="ghost" size="icon" className="mr-4">
+          <Menu className="h-5 w-5" />
+          <span className="sr-only">Toggle Sidebar</span>
+        </Button>
+      </SidebarTrigger>
       
       <div className="flex items-center gap-2">
         <img 

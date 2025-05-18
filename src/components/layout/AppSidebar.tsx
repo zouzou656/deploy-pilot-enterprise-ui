@@ -31,6 +31,7 @@ import useAuthStore from '@/stores/authStore';
 const AppSidebar = () => {
   const { user } = useAuthStore();
   const [activeTab, setActiveTab] = React.useState('general');
+  const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
 
   const navItems = [
     { 
@@ -57,9 +58,8 @@ const AppSidebar = () => {
     <Sidebar>
       <div className="flex h-16 items-center border-b px-4">
         <SidebarTrigger asChild>
-          <Button variant="outline" size="icon" className="md:hidden">
-            <Menu className="h-5 w-5" />
-            <X className="h-5 w-5" />
+          <Button variant="outline" size="icon" className="md:hidden" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
+            {isSidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             <span className="sr-only">Toggle Sidebar</span>
           </Button>
         </SidebarTrigger>
@@ -110,7 +110,7 @@ const AppSidebar = () => {
                                 cn(
                                   "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors w-full",
                                   isActive 
-                                    ? "bg-accent text-accent-foreground" 
+                                    ? "bg-accent text-accent-foreground font-medium" 
                                     : "hover:bg-accent hover:text-accent-foreground"
                                 )
                               }
