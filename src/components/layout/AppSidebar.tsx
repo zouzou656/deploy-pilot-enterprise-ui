@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { 
+import {
   Sidebar,
   SidebarContent,
   SidebarGroup,
@@ -10,162 +10,130 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarTrigger,
-  useSidebar
+  useSidebar,
 } from '@/components/ui/sidebar';
-import { 
+import {
   LayoutDashboard,
   GitBranch,
-  Settings,
+  FileText,
   Package,
   Server,
-  FileText,
-  Database,
   History,
   Code,
-  Link
+  Settings,
+  FileSearch
 } from 'lucide-react';
 import useAuthStore from '@/stores/authStore';
 
 const AppSidebar = () => {
-  const { open } = useSidebar();
+  const { collapsed } = useSidebar();
   const location = useLocation();
-  const currentPath = location.pathname;
   const { checkPermission } = useAuthStore();
-  
-  // Navigation items with permission requirements
-  const navItems = [
-    { 
-      title: 'Dashboard', 
-      path: '/dashboard', 
-      icon: LayoutDashboard, 
-      requiredRole: 'VIEWER' as const 
+
+  // For active route highlighting
+  const isActive = (path: string) => location.pathname === path;
+
+  // For active route class
+  const getNavLinkClasses = ({ isActive }: { isActive: boolean }) =>
+    isActive
+      ? 'w-full flex items-center px-3 py-2 font-medium rounded-md bg-sidebar-accent text-sidebar-accent-foreground'
+      : 'w-full flex items-center px-3 py-2 text-sidebar-foreground hover:bg-sidebar-accent/50 rounded-md';
+
+  const menuItems = [
+    {
+      label: 'Dashboard',
+      icon: LayoutDashboard,
+      path: '/dashboard',
+      requiredRole: null,
     },
-    { 
-      title: 'Git Management', 
-      path: '/git', 
-      icon: GitBranch, 
-      requiredRole: 'VIEWER' as const 
+    {
+      label: 'Git Management',
+      icon: GitBranch,
+      path: '/git',
+      requiredRole: null,
     },
-    { 
-      title: 'API Explorer', 
-      path: '/api-explorer', 
-      icon: Link, 
-      requiredRole: 'VIEWER' as const 
+    {
+      label: 'Settings File',
+      icon: FileText,
+      path: '/settings-file',
+      requiredRole: null,
     },
-    { 
-      title: 'Settings File', 
-      path: '/settings-file', 
-      icon: FileText, 
-      requiredRole: 'DEVELOPER' as const 
+    {
+      label: 'JAR Generation',
+      icon: Package,
+      path: '/jar-generation',
+      requiredRole: null,
     },
-    { 
-      title: 'JAR Generation', 
-      path: '/jar-generation', 
-      icon: Package, 
-      requiredRole: 'DEVELOPER' as const 
+    {
+      label: 'WebLogic Deployment',
+      icon: Server,
+      path: '/weblogic-deployment',
+      requiredRole: null,
     },
-    { 
-      title: 'WebLogic Deployment', 
-      path: '/weblogic-deployment', 
-      icon: Server, 
-      requiredRole: 'DEVELOPER' as const 
+    {
+      label: 'Logs & History',
+      icon: History,
+      path: '/logs',
+      requiredRole: null,
     },
-    { 
-      title: 'Logs & History', 
-      path: '/logs', 
-      icon: History, 
-      requiredRole: 'VIEWER' as const 
+    {
+      label: 'Code Explorer',
+      icon: Code,
+      path: '/code-explorer',
+      requiredRole: null,
     },
-    { 
-      title: 'Metadata Management', 
-      path: '/metadata', 
-      icon: Database, 
-      requiredRole: 'DEVELOPER' as const 
+    {
+      label: 'API Explorer',
+      icon: FileSearch,
+      path: '/api-explorer',
+      requiredRole: 'DEVELOPER',
     },
-    { 
-      title: 'Code Explorer', 
-      path: '/code-explorer', 
-      icon: Code, 
-      requiredRole: 'VIEWER' as const 
-    },
-    { 
-      title: 'Settings', 
-      path: '/settings', 
-      icon: Settings, 
-      requiredRole: 'ADMIN' as const 
+    {
+      label: 'Settings',
+      icon: Settings,
+      path: '/settings',
+      requiredRole: 'ADMIN',
     },
   ];
 
-  // Helper functions
-  const isActive = (path: string) => currentPath === path;
-  const isInSection = (path: string) => currentPath.startsWith(path);
-  
-  const getNavLinkClass = ({ isActive }: { isActive: boolean }) =>
-    `flex items-center gap-2 px-3 py-2 rounded-md w-full ${isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium' : 'hover:bg-sidebar-accent/50 text-sidebar-foreground'}`;
-
   return (
     <Sidebar
-      className={`border-r border-border h-[calc(100vh-4rem)] ${!open ? 'w-16' : 'w-64'}`}
-      collapsible="icon"
+      className={`border-r ${
+        collapsed ? 'w-[60px]' : 'w-[220px]'
+      } transition-all duration-300`}
+      collapsible
     >
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel className={!open ? 'sr-only' : ''}>
-            Main Navigation
+          <SidebarGroupLabel className={collapsed ? 'sr-only' : ''}>
+            Navigation
           </SidebarGroupLabel>
-          
           <SidebarGroupContent>
             <SidebarMenu>
-              {navItems.map((item) => 
-                checkPermission(item.requiredRole) && (
+              {menuItems.map((item) => {
+                const permitted =
+                  item.requiredRole === null || checkPermission(item.requiredRole);
+                if (!permitted) return null;
+
+                return (
                   <SidebarMenuItem key={item.path}>
                     <SidebarMenuButton asChild>
-                      <NavLink to={item.path} className={getNavLinkClass}>
-                        <item.icon className="h-5 w-5" />
-                        {open && <span>{item.title}</span>}
+                      <NavLink
+                        to={item.path}
+                        end
+                        className={getNavLinkClasses}
+                      >
+                        <item.icon className={`h-[18px] w-[18px] ${!collapsed ? 'mr-2' : ''}`} />
+                        {!collapsed && <span>{item.label}</span>}
                       </NavLink>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
-                )
-              )}
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-        
-        {open && (
-          <SidebarGroup>
-            <SidebarGroupLabel>Recent Projects</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
-                    <div className="flex items-center gap-2 px-3 py-2 text-sidebar-foreground hover:bg-sidebar-accent/50 rounded-md cursor-pointer">
-                      <div className="h-2 w-2 rounded-full bg-success"></div>
-                      <span>OSB Main Integration</span>
-                    </div>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
-                    <div className="flex items-center gap-2 px-3 py-2 text-sidebar-foreground hover:bg-sidebar-accent/50 rounded-md cursor-pointer">
-                      <div className="h-2 w-2 rounded-full bg-warning"></div>
-                      <span>Customer API</span>
-                    </div>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
       </SidebarContent>
-      
-      {/* Version info at bottom */}
-      {open && (
-        <div className="mt-auto p-4 text-xs text-sidebar-foreground/70">
-          <p>OSB CI/CD Platform v1.0.0</p>
-        </div>
-      )}
     </Sidebar>
   );
 };
