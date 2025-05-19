@@ -28,7 +28,8 @@ import {
 import useAuthStore, { PERMISSIONS } from '@/stores/authStore';
 
 const AppSidebar = () => {
-  const { isCollapsed } = useSidebar(); // Fixed: using isCollapsed instead of collapsed
+  const sidebarContext = useSidebar();
+  const isCollapsed = sidebarContext.collapsed;
   const location = useLocation();
   const { checkPermission, hasPermission } = useAuthStore();
 
