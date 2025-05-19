@@ -131,7 +131,7 @@ const mockLogin = async (username: string, password: string) => {
             id: '4',
             username: 'manager',
             email: 'manager@example.com',
-            role: 'MANAGER',  // Custom role beyond the legacy ADMIN|DEVELOPER|VIEWER
+            role: 'MANAGER' as LegacyRole,  // Cast to LegacyRole to fix type error
             firstName: 'Project',
             lastName: 'Manager',
             permissions: [
@@ -290,4 +290,4 @@ const useAuthStore = create<AuthStore>()(
 );
 
 export default useAuthStore;
-export { PERMISSIONS };
+// Export PERMISSIONS only once to avoid duplicate exports
