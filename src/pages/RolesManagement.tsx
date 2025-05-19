@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { roleService } from '@/services/roleService';
@@ -114,10 +115,12 @@ const RolesManagement = () => {
   } = useQuery({
     queryKey: ['roles'],
     queryFn: roleService.getRoles,
-    onError: () => {
-      // Log error but don't fail - we'll use the store data instead
-      console.log('Failed to fetch roles from API, using store data instead');
-      return rbacStore.roles;
+    retry: 1,
+    refetchOnWindowFocus: false,
+    meta: {
+      onError: () => {
+        console.log('Failed to fetch roles from API, using store data instead');
+      }
     }
   });
   
@@ -245,9 +248,9 @@ const RolesManagement = () => {
   };
   
   // Filter roles by search query
-  const filteredRoles = roles.filter(role => 
+  const filteredRoles = roles ? roles.filter(role => 
     role.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  ) : [];
   
   // Count permissions by group for a role
   const countPermissionsByGroup = (role: Role, group: string) => {

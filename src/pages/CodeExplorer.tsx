@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
@@ -244,7 +245,6 @@ export default function CodeExplorer() {
                         value={fileContent}
                         onChange={() => {}}
                         language={getLanguageFromFile(selectedFile)}
-                        theme="vs-dark"
                     />
 
                 ) : (

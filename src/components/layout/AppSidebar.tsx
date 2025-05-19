@@ -28,7 +28,7 @@ import {
 import useAuthStore, { PERMISSIONS } from '@/stores/authStore';
 
 const AppSidebar = () => {
-  const { collapsed } = useSidebar(); // Fixed: using collapsed instead of isCollapsed
+  const { isCollapsed } = useSidebar(); // Fixed: using isCollapsed instead of collapsed
   const location = useLocation();
   const { checkPermission, hasPermission } = useAuthStore();
 
@@ -113,13 +113,13 @@ const AppSidebar = () => {
   return (
       <Sidebar
           className={`border-r ${
-              collapsed ? 'w-[60px]' : 'w-[220px]'
+              isCollapsed ? 'w-[60px]' : 'w-[220px]'
           } transition-all top-[6%] duration-300`}
           collapsible="icon"
       >
         <SidebarContent>
           <SidebarGroup>
-            <SidebarGroupLabel className={collapsed ? 'sr-only' : ''}>
+            <SidebarGroupLabel className={isCollapsed ? 'sr-only' : ''}>
               Navigation
             </SidebarGroupLabel>
             <SidebarGroupContent>
@@ -148,8 +148,8 @@ const AppSidebar = () => {
                               end
                               className={getNavLinkClasses}
                           >
-                            <item.icon className={`h-[18px] w-[18px] ${!collapsed ? 'mr-2' : ''}`} />
-                            {!collapsed && <span>{item.label}</span>}
+                            <item.icon className={`h-[18px] w-[18px] ${!isCollapsed ? 'mr-2' : ''}`} />
+                            {!isCollapsed && <span>{item.label}</span>}
                           </NavLink>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
