@@ -290,4 +290,4 @@ const useAuthStore = create<AuthStore>()(
 );
 
 export default useAuthStore;
-// Export PERMISSIONS only once to avoid duplicate exports
+// Only export PERMISSIONS once, the const definition above is the export

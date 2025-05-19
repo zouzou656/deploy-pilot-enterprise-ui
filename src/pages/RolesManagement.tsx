@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { roleService } from '@/services/roleService';
@@ -83,13 +82,19 @@ const RolesManagement = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [permissions, setPermissions] = useState<Permission[]>(mockPermissions);
   
+  // Use RBAC store directly to ensure we have data
+  const rbacStore = useRBACStore();
+  
   // Initialize RBAC store
   useEffect(() => {
-    const { fetchUsers, fetchRoles, fetchPermissions } = useRBACStore.getState();
-    fetchUsers();
-    fetchRoles();
-    fetchPermissions();
-  }, []);
+    // If we don't have data already, fetch it
+    if (rbacStore.users.length === 0) rbacStore.fetchUsers();
+    if (rbacStore.roles.length === 0) rbacStore.fetchRoles();
+    if (rbacStore.permissions.length === 0) rbacStore.fetchPermissions();
+    
+    // Update local permissions state from store
+    setPermissions(rbacStore.permissions);
+  }, [rbacStore]);
   
   // Create permission groups from available permissions
   const permissionGroups = permissions.reduce((groups, permission) => {
@@ -101,10 +106,19 @@ const RolesManagement = () => {
     return groups;
   }, {} as Record<string, Permission[]>);
   
-  // Fetch roles
-  const { data: roles = [], isLoading: isLoadingRoles } = useQuery({
+  // Fetch roles with better error handling and fallback to direct store access
+  const { 
+    data: roles = rbacStore.roles, // Fallback to store data
+    isLoading: isLoadingRoles,
+    error: rolesError
+  } = useQuery({
     queryKey: ['roles'],
     queryFn: roleService.getRoles,
+    onError: () => {
+      // Log error but don't fail - we'll use the store data instead
+      console.log('Failed to fetch roles from API, using store data instead');
+      return rbacStore.roles;
+    }
   });
   
   // Create role mutation
@@ -274,8 +288,12 @@ const RolesManagement = () => {
         )}
       </div>
       
-      {isLoadingRoles ? (
+      {isLoadingRoles && rbacStore.isLoading ? (
         <div className="text-center py-8">Loading...</div>
+      ) : rolesError ? (
+        <div className="text-center py-8 text-red-500">
+          Error loading roles. Using fallback data.
+        </div>
       ) : filteredRoles.length === 0 ? (
         <div className="text-center py-8">No roles found</div>
       ) : (

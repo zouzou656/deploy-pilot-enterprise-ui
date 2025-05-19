@@ -132,9 +132,9 @@ const mockUsers: UserListItem[] = [
 
 // Create the RBAC store
 const useRBACStore = create<RBACState & RBACActions>((set, get) => ({
-  users: [],
-  roles: [],
-  permissions: [],
+  users: mockUsers, // Initialize with mock data
+  roles: mockRoles, // Initialize with mock data
+  permissions: mockPermissions, // Initialize with mock data
   isLoading: false,
   error: null,
   

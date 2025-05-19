@@ -15,10 +15,12 @@ export const userService = {
       } else {
         // Fallback to local store if API fails
         console.warn('API call failed, using local store data instead');
-        const { fetchUsers, users } = useRBACStore.getState();
+        // Get users directly from the store to ensure we have data
+        const users = useRBACStore.getState().users;
         
         if (users.length === 0) {
-          await fetchUsers();
+          // If users array is empty, try to fetch them
+          await useRBACStore.getState().fetchUsers();
         }
         
         return useRBACStore.getState().users;
@@ -26,10 +28,12 @@ export const userService = {
     } catch (error) {
       // Fallback to local store on error
       console.error('API error, using local store data instead:', error);
-      const { fetchUsers, users } = useRBACStore.getState();
+      // Get users directly from the store to ensure we have data
+      const users = useRBACStore.getState().users;
       
       if (users.length === 0) {
-        await fetchUsers();
+        // If users array is empty, try to fetch them
+        await useRBACStore.getState().fetchUsers();
       }
       
       return useRBACStore.getState().users;

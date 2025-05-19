@@ -15,10 +15,12 @@ export const roleService = {
       } else {
         // Fallback to local store if API fails
         console.warn('API call failed, using local store data instead');
-        const { fetchRoles, roles } = useRBACStore.getState();
+        // Get roles directly from the store to ensure we have data
+        const roles = useRBACStore.getState().roles;
         
         if (roles.length === 0) {
-          await fetchRoles();
+          // If roles array is empty, try to fetch them
+          await useRBACStore.getState().fetchRoles();
         }
         
         return useRBACStore.getState().roles;
@@ -26,10 +28,12 @@ export const roleService = {
     } catch (error) {
       // Fallback to local store on error
       console.error('API error, using local store data instead:', error);
-      const { fetchRoles, roles } = useRBACStore.getState();
+      // Get roles directly from the store to ensure we have data
+      const roles = useRBACStore.getState().roles;
       
       if (roles.length === 0) {
-        await fetchRoles();
+        // If roles array is empty, try to fetch them
+        await useRBACStore.getState().fetchRoles();
       }
       
       return useRBACStore.getState().roles;
