@@ -8,6 +8,7 @@ import PageHeader from '@/components/ui-custom/PageHeader';
 
 // Import the new components
 import PipelineNav, { PipelineStep } from '@/components/jar-generation/PipelineNav';
+import { Button } from '@/components/ui/button';
 import ConfigStep from '@/components/jar-generation/ConfigStep';
 import FileSelectionStep from '@/components/jar-generation/FileSelectionStep';
 import PreviewStep from '@/components/jar-generation/PreviewStep';
@@ -20,6 +21,7 @@ import useSettingsStore from '@/stores/settingsStore';
 const API = 'http://localhost:5020/api/git';
 
 export default function JarGeneration() {
+  console.log("JarGeneration mounted")
   const { toast } = useToast();
   const navigate = useNavigate();
   
