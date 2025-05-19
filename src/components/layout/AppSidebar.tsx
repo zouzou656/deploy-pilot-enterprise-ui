@@ -100,7 +100,8 @@ const AppSidebar = () => {
       <Sidebar
           className={`border-r ${
               isCollapsed ? 'w-[60px]' : 'w-[220px]'
-          } transition-all duration-300`}
+          } transition-all top-[6%] duration-300`}
+
           // Fixed: collapsible type should be "icon", "offcanvas", or "none"
           collapsible="icon"
       >

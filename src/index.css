@@ -114,6 +114,19 @@
 .swagger-dark .swagger-ui table thead tr th {
   @apply text-foreground;
 }
+
+td.diff-code.diff-code-insert {
+   color: black !important;
+ }
+td.diff-code.diff-code-delete {
+  color: black !important;
+}
+td.diff-gutter.diff-gutter-insert {
+   color: black !important;
+ }
+td.diff-gutter.diff-gutter-delete {
+  color: black !important;
+}
 .swagger-dark .swagger-ui .opblock.opblock-get {
   @apply border border-blue-800 bg-blue-950;
 }
