@@ -7,13 +7,15 @@ import { Role } from '@/types';
 interface AuthGuardProps {
   children: React.ReactNode;
   requiredRole?: Role;
+  requiredPermission?: string;
 }
 
 const AuthGuard: React.FC<AuthGuardProps> = ({ 
   children, 
-  requiredRole = 'VIEWER' 
+  requiredRole = 'VIEWER',
+  requiredPermission,
 }) => {
-  const { isAuthenticated, user, loading, refreshUserToken } = useAuthStore();
+  const { isAuthenticated, user, loading, refreshUserToken, checkPermission, hasPermission } = useAuthStore();
   const location = useLocation();
 
   useEffect(() => {
@@ -24,11 +26,6 @@ const AuthGuard: React.FC<AuthGuardProps> = ({
       });
     }
   }, [refreshUserToken, isAuthenticated, loading]);
-
-  // Check permissions based on role hierarchy
-  const hasPermission = useAuthStore((state) => 
-    state.checkPermission(requiredRole)
-  );
 
   if (loading) {
     return (
@@ -46,8 +43,13 @@ const AuthGuard: React.FC<AuthGuardProps> = ({
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (!hasPermission) {
-    // Show unauthorized page
+  // First check specific permission if provided
+  if (requiredPermission && !hasPermission(requiredPermission)) {
+    return <Navigate to="/unauthorized" replace />;
+  }
+  
+  // Then check role-based permission
+  if (!checkPermission(requiredRole)) {
     return <Navigate to="/unauthorized" replace />;
   }
 

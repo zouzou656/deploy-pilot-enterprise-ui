@@ -22,6 +22,8 @@ import LogsHistory from "./pages/LogsHistory";
 import CodeExplorer from "./pages/CodeExplorer";
 import Settings from "./pages/Settings";
 import ApiExplorer from "./pages/ApiExplorer";
+import UsersManagement from "./pages/UsersManagement";
+import RolesManagement from "./pages/RolesManagement";
 
 // Layout
 import AppLayout from "./components/layout/AppLayout";
@@ -31,6 +33,7 @@ import AuthGuard from "./components/auth/AuthGuard";
 
 // Stores
 import useThemeStore from "./stores/themeStore";
+import { PERMISSIONS } from "./stores/authStore";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -165,6 +168,28 @@ const App = () => {
                 <AuthGuard requiredRole="ADMIN">
                   <AppLayout>
                     <Settings />
+                  </AppLayout>
+                </AuthGuard>
+              }
+            />
+            
+            {/* RBAC Management Routes */}
+            <Route
+              path="/users"
+              element={
+                <AuthGuard requiredPermission={PERMISSIONS.USER_VIEW}>
+                  <AppLayout>
+                    <UsersManagement />
+                  </AppLayout>
+                </AuthGuard>
+              }
+            />
+            <Route
+              path="/roles"
+              element={
+                <AuthGuard requiredPermission={PERMISSIONS.ROLE_VIEW}>
+                  <AppLayout>
+                    <RolesManagement />
                   </AppLayout>
                 </AuthGuard>
               }

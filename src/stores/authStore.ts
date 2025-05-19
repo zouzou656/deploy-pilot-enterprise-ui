@@ -10,8 +10,42 @@ interface AuthStore extends AuthState {
   setUser: (user: User) => void;
   setToken: (token: string) => void;
   setError: (error: string | null) => void;
-  checkPermission: (requiredRole: Role) => boolean;
+  checkPermission: (requiredRole: Role | string) => boolean;
+  hasPermission: (permission: string) => boolean;
 }
+
+// Mock available permissions
+const PERMISSIONS = {
+  USER_VIEW: 'user:view',
+  USER_CREATE: 'user:create',
+  USER_EDIT: 'user:edit',
+  USER_DELETE: 'user:delete',
+  ROLE_VIEW: 'role:view',
+  ROLE_CREATE: 'role:create',
+  ROLE_EDIT: 'role:edit',
+  ROLE_DELETE: 'role:delete',
+};
+
+// Map roles to permissions - in a real app this would come from the API
+const ROLE_PERMISSIONS = {
+  ADMIN: [
+    PERMISSIONS.USER_VIEW,
+    PERMISSIONS.USER_CREATE,
+    PERMISSIONS.USER_EDIT,
+    PERMISSIONS.USER_DELETE,
+    PERMISSIONS.ROLE_VIEW,
+    PERMISSIONS.ROLE_CREATE,
+    PERMISSIONS.ROLE_EDIT,
+    PERMISSIONS.ROLE_DELETE,
+  ],
+  DEVELOPER: [
+    PERMISSIONS.USER_VIEW,
+    PERMISSIONS.ROLE_VIEW,
+  ],
+  VIEWER: [
+    PERMISSIONS.USER_VIEW,
+  ],
+};
 
 // Mock API for initial development
 const mockLogin = async (username: string, password: string) => {
@@ -25,7 +59,9 @@ const mockLogin = async (username: string, password: string) => {
             email: 'admin@example.com',
             role: 'ADMIN',
             firstName: 'Admin',
-            lastName: 'User'
+            lastName: 'User',
+            permissions: ROLE_PERMISSIONS.ADMIN,
+            roleId: 'role-admin-001'
           },
           token: 'mock-jwt-token',
           refreshToken: 'mock-refresh-token'
@@ -38,7 +74,9 @@ const mockLogin = async (username: string, password: string) => {
             email: 'dev@example.com',
             role: 'DEVELOPER',
             firstName: 'Dev',
-            lastName: 'User'
+            lastName: 'User',
+            permissions: ROLE_PERMISSIONS.DEVELOPER,
+            roleId: 'role-dev-001'
           },
           token: 'mock-jwt-token',
           refreshToken: 'mock-refresh-token'
@@ -51,7 +89,9 @@ const mockLogin = async (username: string, password: string) => {
             email: 'viewer@example.com',
             role: 'VIEWER',
             firstName: 'View',
-            lastName: 'User'
+            lastName: 'User',
+            permissions: ROLE_PERMISSIONS.VIEWER,
+            roleId: 'role-viewer-001'
           },
           token: 'mock-jwt-token',
           refreshToken: 'mock-refresh-token'
@@ -72,6 +112,7 @@ const useAuthStore = create<AuthStore>()(
       refreshToken: null,
       loading: false,
       error: null,
+      permissions: [],
 
       login: async (username: string, password: string) => {
         set({ loading: true, error: null });
@@ -82,7 +123,8 @@ const useAuthStore = create<AuthStore>()(
             user,
             token,
             refreshToken,
-            loading: false
+            loading: false,
+            permissions: user.permissions
           });
         } catch (error: any) {
           set({ 
@@ -102,7 +144,8 @@ const useAuthStore = create<AuthStore>()(
           user: null,
           token: null,
           refreshToken: null,
-          error: null
+          error: null,
+          permissions: []
         });
       },
 
@@ -143,9 +186,14 @@ const useAuthStore = create<AuthStore>()(
         set({ error });
       },
 
-      checkPermission: (requiredRole: Role) => {
+      checkPermission: (requiredRole: Role | string) => {
         const { user } = get();
         if (!user) return false;
+        
+        // If checking for a permission string directly
+        if (typeof requiredRole === 'string' && !['ADMIN', 'DEVELOPER', 'VIEWER'].includes(requiredRole)) {
+          return get().hasPermission(requiredRole);
+        }
         
         // Role hierarchy: ADMIN > DEVELOPER > VIEWER
         switch (requiredRole) {
@@ -158,6 +206,13 @@ const useAuthStore = create<AuthStore>()(
           default:
             return false;
         }
+      },
+      
+      hasPermission: (permission: string) => {
+        const { user } = get();
+        if (!user || !user.permissions) return false;
+        
+        return user.permissions.includes(permission);
       }
     }),
     {
@@ -168,3 +223,4 @@ const useAuthStore = create<AuthStore>()(
 );
 
 export default useAuthStore;
+export { PERMISSIONS };

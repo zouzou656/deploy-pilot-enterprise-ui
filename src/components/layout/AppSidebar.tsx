@@ -21,14 +21,16 @@ import {
   History,
   Code,
   Settings,
-  FileSearch
+  FileSearch,
+  Users,
+  Shield
 } from 'lucide-react';
-import useAuthStore from '@/stores/authStore';
+import useAuthStore, { PERMISSIONS } from '@/stores/authStore';
 
 const AppSidebar = () => {
   const { isCollapsed } = useSidebar(); // Fixed: using isCollapsed instead of collapsed
   const location = useLocation();
-  const { checkPermission } = useAuthStore();
+  const { checkPermission, hasPermission } = useAuthStore();
 
   // For active route highlighting
   const isActive = (path: string) => location.pathname === path;
@@ -86,7 +88,19 @@ const AppSidebar = () => {
       label: 'API Explorer',
       icon: FileSearch,
       path: '/api-explorer',
-      requiredRole: 'DEVELOPER',
+      requiredPermission: 'user:view',
+    },
+    {
+      label: 'Users',
+      icon: Users,
+      path: '/users',
+      requiredPermission: PERMISSIONS.USER_VIEW,
+    },
+    {
+      label: 'Roles',
+      icon: Shield,
+      path: '/roles',
+      requiredPermission: PERMISSIONS.ROLE_VIEW,
     },
     {
       label: 'Settings',
@@ -113,9 +127,19 @@ const AppSidebar = () => {
             <SidebarGroupContent>
               <SidebarMenu>
                 {menuItems.map((item) => {
-                  // Fixed: ensuring checkPermission is called with a proper Role type or null
-                  const permitted =
-                      item.requiredRole === null || (item.requiredRole && checkPermission(item.requiredRole as 'ADMIN' | 'DEVELOPER' | 'USER'));
+                  // Check if user has required role or permission
+                  let permitted = false;
+                  
+                  if (item.requiredRole === null) {
+                    permitted = true;
+                  } else if (item.requiredRole) {
+                    permitted = checkPermission(item.requiredRole as 'ADMIN' | 'DEVELOPER' | 'USER');
+                  }
+                  
+                  if (item.requiredPermission && !permitted) {
+                    permitted = hasPermission(item.requiredPermission);
+                  }
+                  
                   if (!permitted) return null;
 
                   return (

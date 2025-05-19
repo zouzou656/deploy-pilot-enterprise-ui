@@ -1,4 +1,3 @@
-
 // User and Authentication
 export type Role = 'ADMIN' | 'DEVELOPER' | 'VIEWER';
 
@@ -10,6 +9,8 @@ export interface User {
   firstName?: string;
   lastName?: string;
   avatarUrl?: string;
+  permissions?: string[]; // Added for RBAC
+  roleId?: string; // Added for RBAC
 }
 
 export interface AuthState {
@@ -19,6 +20,7 @@ export interface AuthState {
   refreshToken: string | null;
   loading: boolean;
   error: string | null;
+  permissions?: string[]; // Added for RBAC
 }
 
 // Deployment related
