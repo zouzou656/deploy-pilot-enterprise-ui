@@ -1,7 +1,8 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { AuthState, User, Role } from '../types';
+import { AuthState, User, Role as LegacyRole } from '../types';
+import useRBACStore from './rbacStore';
 
 interface AuthStore extends AuthState {
   login: (username: string, password: string) => Promise<void>;
@@ -10,12 +11,13 @@ interface AuthStore extends AuthState {
   setUser: (user: User) => void;
   setToken: (token: string) => void;
   setError: (error: string | null) => void;
-  checkPermission: (requiredRole: Role | string) => boolean;
+  checkPermission: (requiredRole: LegacyRole | string) => boolean;
   hasPermission: (permission: string) => boolean;
+  getUserPermissions: () => string[];
 }
 
-// Mock available permissions
-const PERMISSIONS = {
+// Export permissions constants for consistent use across app
+export const PERMISSIONS = {
   USER_VIEW: 'user:view',
   USER_CREATE: 'user:create',
   USER_EDIT: 'user:edit',
@@ -24,27 +26,17 @@ const PERMISSIONS = {
   ROLE_CREATE: 'role:create',
   ROLE_EDIT: 'role:edit',
   ROLE_DELETE: 'role:delete',
-};
-
-// Map roles to permissions - in a real app this would come from the API
-const ROLE_PERMISSIONS = {
-  ADMIN: [
-    PERMISSIONS.USER_VIEW,
-    PERMISSIONS.USER_CREATE,
-    PERMISSIONS.USER_EDIT,
-    PERMISSIONS.USER_DELETE,
-    PERMISSIONS.ROLE_VIEW,
-    PERMISSIONS.ROLE_CREATE,
-    PERMISSIONS.ROLE_EDIT,
-    PERMISSIONS.ROLE_DELETE,
-  ],
-  DEVELOPER: [
-    PERMISSIONS.USER_VIEW,
-    PERMISSIONS.ROLE_VIEW,
-  ],
-  VIEWER: [
-    PERMISSIONS.USER_VIEW,
-  ],
+  GIT_VIEW: 'git:view',
+  GIT_PULL: 'git:pull',
+  GIT_PUSH: 'git:push',
+  DEPLOYMENT_VIEW: 'deployment:view',
+  DEPLOYMENT_CREATE: 'deployment:create',
+  DEPLOYMENT_CANCEL: 'deployment:cancel',
+  SETTINGS_VIEW: 'settings:view',
+  SETTINGS_EDIT: 'settings:edit',
+  JAR_VIEW: 'jar:view',
+  JAR_CREATE: 'jar:create',
+  JAR_DEPLOY: 'jar:deploy',
 };
 
 // Mock API for initial development
@@ -60,8 +52,28 @@ const mockLogin = async (username: string, password: string) => {
             role: 'ADMIN',
             firstName: 'Admin',
             lastName: 'User',
-            permissions: ROLE_PERMISSIONS.ADMIN,
-            roleId: 'role-admin-001'
+            permissions: [
+              PERMISSIONS.USER_VIEW, 
+              PERMISSIONS.USER_CREATE, 
+              PERMISSIONS.USER_EDIT, 
+              PERMISSIONS.USER_DELETE,
+              PERMISSIONS.ROLE_VIEW,
+              PERMISSIONS.ROLE_CREATE,
+              PERMISSIONS.ROLE_EDIT,
+              PERMISSIONS.ROLE_DELETE,
+              PERMISSIONS.GIT_VIEW,
+              PERMISSIONS.GIT_PULL,
+              PERMISSIONS.GIT_PUSH,
+              PERMISSIONS.DEPLOYMENT_VIEW,
+              PERMISSIONS.DEPLOYMENT_CREATE,
+              PERMISSIONS.DEPLOYMENT_CANCEL,
+              PERMISSIONS.SETTINGS_VIEW,
+              PERMISSIONS.SETTINGS_EDIT,
+              PERMISSIONS.JAR_VIEW,
+              PERMISSIONS.JAR_CREATE,
+              PERMISSIONS.JAR_DEPLOY
+            ],
+            roleId: 'role-admin'
           },
           token: 'mock-jwt-token',
           refreshToken: 'mock-refresh-token'
@@ -75,8 +87,19 @@ const mockLogin = async (username: string, password: string) => {
             role: 'DEVELOPER',
             firstName: 'Dev',
             lastName: 'User',
-            permissions: ROLE_PERMISSIONS.DEVELOPER,
-            roleId: 'role-dev-001'
+            permissions: [
+              PERMISSIONS.USER_VIEW,
+              PERMISSIONS.ROLE_VIEW,
+              PERMISSIONS.GIT_VIEW,
+              PERMISSIONS.GIT_PULL,
+              PERMISSIONS.GIT_PUSH,
+              PERMISSIONS.DEPLOYMENT_VIEW,
+              PERMISSIONS.DEPLOYMENT_CREATE,
+              PERMISSIONS.JAR_VIEW,
+              PERMISSIONS.JAR_CREATE,
+              PERMISSIONS.JAR_DEPLOY
+            ],
+            roleId: 'role-developer'
           },
           token: 'mock-jwt-token',
           refreshToken: 'mock-refresh-token'
@@ -90,8 +113,37 @@ const mockLogin = async (username: string, password: string) => {
             role: 'VIEWER',
             firstName: 'View',
             lastName: 'User',
-            permissions: ROLE_PERMISSIONS.VIEWER,
-            roleId: 'role-viewer-001'
+            permissions: [
+              PERMISSIONS.USER_VIEW,
+              PERMISSIONS.ROLE_VIEW,
+              PERMISSIONS.GIT_VIEW,
+              PERMISSIONS.DEPLOYMENT_VIEW,
+              PERMISSIONS.JAR_VIEW
+            ],
+            roleId: 'role-viewer'
+          },
+          token: 'mock-jwt-token',
+          refreshToken: 'mock-refresh-token'
+        });
+      } else if (username === 'manager' && password === 'manager123') {
+        resolve({
+          user: {
+            id: '4',
+            username: 'manager',
+            email: 'manager@example.com',
+            role: 'MANAGER',  // Custom role beyond the legacy ADMIN|DEVELOPER|VIEWER
+            firstName: 'Project',
+            lastName: 'Manager',
+            permissions: [
+              PERMISSIONS.USER_VIEW,
+              PERMISSIONS.ROLE_VIEW,
+              PERMISSIONS.DEPLOYMENT_VIEW,
+              PERMISSIONS.DEPLOYMENT_CREATE,
+              PERMISSIONS.DEPLOYMENT_CANCEL,
+              PERMISSIONS.JAR_VIEW,
+              PERMISSIONS.JAR_DEPLOY
+            ],
+            roleId: 'role-manager'
           },
           token: 'mock-jwt-token',
           refreshToken: 'mock-refresh-token'
@@ -186,7 +238,13 @@ const useAuthStore = create<AuthStore>()(
         set({ error });
       },
 
-      checkPermission: (requiredRole: Role | string) => {
+      getUserPermissions: () => {
+        const { user } = get();
+        if (!user) return [];
+        return user.permissions || [];
+      },
+
+      checkPermission: (requiredRole: LegacyRole | string) => {
         const { user } = get();
         if (!user) return false;
         
@@ -204,6 +262,15 @@ const useAuthStore = create<AuthStore>()(
           case 'ADMIN':
             return user.role === 'ADMIN';
           default:
+            // If role is not standard, fallback to permission-based check
+            if (typeof requiredRole === 'string') {
+              // Check if user has any role-specific permission
+              const { roles } = useRBACStore.getState();
+              const role = roles.find(r => r.name.toUpperCase() === requiredRole.toUpperCase());
+              if (role && user.permissions) {
+                return role.permissions.some(p => user.permissions?.includes(p));
+              }
+            }
             return false;
         }
       },

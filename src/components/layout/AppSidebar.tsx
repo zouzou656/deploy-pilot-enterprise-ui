@@ -28,7 +28,7 @@ import {
 import useAuthStore, { PERMISSIONS } from '@/stores/authStore';
 
 const AppSidebar = () => {
-  const { isCollapsed } = useSidebar(); // Fixed: using isCollapsed instead of collapsed
+  const { collapsed } = useSidebar(); // Fixed: using collapsed instead of isCollapsed
   const location = useLocation();
   const { checkPermission, hasPermission } = useAuthStore();
 
@@ -113,15 +113,13 @@ const AppSidebar = () => {
   return (
       <Sidebar
           className={`border-r ${
-              isCollapsed ? 'w-[60px]' : 'w-[220px]'
+              collapsed ? 'w-[60px]' : 'w-[220px]'
           } transition-all top-[6%] duration-300`}
-
-          // Fixed: collapsible type should be "icon", "offcanvas", or "none"
           collapsible="icon"
       >
         <SidebarContent>
           <SidebarGroup>
-            <SidebarGroupLabel className={isCollapsed ? 'sr-only' : ''}>
+            <SidebarGroupLabel className={collapsed ? 'sr-only' : ''}>
               Navigation
             </SidebarGroupLabel>
             <SidebarGroupContent>
@@ -133,7 +131,7 @@ const AppSidebar = () => {
                   if (item.requiredRole === null) {
                     permitted = true;
                   } else if (item.requiredRole) {
-                    permitted = checkPermission(item.requiredRole as 'ADMIN' | 'DEVELOPER' | 'USER');
+                    permitted = checkPermission(item.requiredRole as 'ADMIN' | 'DEVELOPER' | 'VIEWER');
                   }
                   
                   if (item.requiredPermission && !permitted) {
@@ -150,8 +148,8 @@ const AppSidebar = () => {
                               end
                               className={getNavLinkClasses}
                           >
-                            <item.icon className={`h-[18px] w-[18px] ${!isCollapsed ? 'mr-2' : ''}`} />
-                            {!isCollapsed && <span>{item.label}</span>}
+                            <item.icon className={`h-[18px] w-[18px] ${!collapsed ? 'mr-2' : ''}`} />
+                            {!collapsed && <span>{item.label}</span>}
                           </NavLink>
                         </SidebarMenuButton>
                       </SidebarMenuItem>

@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { userService } from '@/services/userService';
 import { roleService } from '@/services/roleService';
@@ -60,13 +60,14 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import useAuthStore, { PERMISSIONS } from '@/stores/authStore';
 import { UserListItem } from '@/types/rbac';
+import useRBACStore from '@/stores/rbacStore';
 
 const userFormSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email address' }),
   firstName: z.string().min(2, { message: 'First name must be at least 2 characters' }).optional(),
   lastName: z.string().min(2, { message: 'Last name must be at least 2 characters' }).optional(),
   password: z.string().min(6, { message: 'Password must be at least 6 characters' }).optional(),
-  roleId: z.string({ required_error: 'Please select a role' }),
+  roleIds: z.array(z.string()).min(1, { message: 'Please select at least one role' }),
   status: z.enum(['active', 'inactive', 'pending']),
 });
 
@@ -83,6 +84,14 @@ const UsersManagement = () => {
   const [selectedUser, setSelectedUser] = useState<UserListItem | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Initialize RBAC store
+  useEffect(() => {
+    const { fetchUsers, fetchRoles, fetchPermissions } = useRBACStore.getState();
+    fetchUsers();
+    fetchRoles();
+    fetchPermissions();
+  }, []);
+  
   // Fetch users
   const { data: users = [], isLoading: isLoadingUsers } = useQuery({
     queryKey: ['users'],
@@ -97,7 +106,7 @@ const UsersManagement = () => {
   
   // Create user mutation
   const createUserMutation = useMutation({
-    mutationFn: userService.createUser,
+    mutationFn: (data: any) => userService.createUser(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       setIsCreateDialogOpen(false);
@@ -166,7 +175,7 @@ const UsersManagement = () => {
       firstName: '',
       lastName: '',
       password: '',
-      roleId: '',
+      roleIds: [],
       status: 'active',
     },
   });
@@ -178,7 +187,7 @@ const UsersManagement = () => {
       email: '',
       firstName: '',
       lastName: '',
-      roleId: '',
+      roleIds: [],
       status: 'active',
     },
   });
@@ -186,8 +195,12 @@ const UsersManagement = () => {
   // Handle create user form submission
   const onCreateSubmit = (values: UserFormValues) => {
     createUserMutation.mutate({
-      ...values,
+      email: values.email,
       password: values.password || Math.random().toString(36).slice(-8), // Generate random password if not provided
+      roleIds: values.roleIds,
+      firstName: values.firstName,
+      lastName: values.lastName,
+      status: values.status
     });
   };
   
@@ -213,7 +226,7 @@ const UsersManagement = () => {
     setSelectedUser(user);
     updateForm.reset({
       email: user.email,
-      roleId: user.roleId,
+      roleIds: user.roleIds,
       status: user.status,
     });
     setIsUpdateDialogOpen(true);
@@ -278,7 +291,7 @@ const UsersManagement = () => {
           <TableHeader>
             <TableRow>
               <TableHead>Email</TableHead>
-              <TableHead>Role</TableHead>
+              <TableHead>Roles</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Last Login</TableHead>
               <TableHead className="text-right">Actions</TableHead>
@@ -297,7 +310,15 @@ const UsersManagement = () => {
               filteredUsers.map((user) => (
                 <TableRow key={user.id}>
                   <TableCell>{user.email}</TableCell>
-                  <TableCell>{getRoleName(user.roleId)}</TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap gap-1">
+                      {user.roleIds.map(roleId => (
+                        <Badge key={roleId} variant="outline" className="mr-1">
+                          {getRoleName(roleId)}
+                        </Badge>
+                      ))}
+                    </div>
+                  </TableCell>
                   <TableCell>
                     <Badge
                       variant={
@@ -408,27 +429,32 @@ const UsersManagement = () => {
               
               <FormField
                 control={createForm.control}
-                name="roleId"
+                name="roleIds"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Role</FormLabel>
-                    <Select 
-                      onValueChange={field.onChange} 
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a role" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {roles.map(role => (
-                          <SelectItem key={role.id} value={role.id}>
-                            {role.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <FormLabel>Roles</FormLabel>
+                    <div className="grid grid-cols-2 gap-2 border p-2 rounded-md max-h-36 overflow-y-auto">
+                      {roles.map(role => (
+                        <div key={role.id} className="flex items-center space-x-2">
+                          <input 
+                            type="checkbox"
+                            id={`role-${role.id}`}
+                            className="w-4 h-4 rounded border-gray-300"
+                            value={role.id}
+                            checked={field.value.includes(role.id)}
+                            onChange={(e) => {
+                              const checked = e.target.checked;
+                              if (checked) {
+                                field.onChange([...field.value, role.id]);
+                              } else {
+                                field.onChange(field.value.filter(id => id !== role.id));
+                              }
+                            }}
+                          />
+                          <label htmlFor={`role-${role.id}`} className="text-sm">{role.name}</label>
+                        </div>
+                      ))}
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -556,27 +582,32 @@ const UsersManagement = () => {
               
               <FormField
                 control={updateForm.control}
-                name="roleId"
+                name="roleIds"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Role</FormLabel>
-                    <Select 
-                      onValueChange={field.onChange} 
-                      value={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a role" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {roles.map(role => (
-                          <SelectItem key={role.id} value={role.id}>
-                            {role.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <FormLabel>Roles</FormLabel>
+                    <div className="grid grid-cols-2 gap-2 border p-2 rounded-md max-h-36 overflow-y-auto">
+                      {roles.map(role => (
+                        <div key={role.id} className="flex items-center space-x-2">
+                          <input 
+                            type="checkbox"
+                            id={`edit-role-${role.id}`}
+                            className="w-4 h-4 rounded border-gray-300"
+                            value={role.id}
+                            checked={field.value.includes(role.id)}
+                            onChange={(e) => {
+                              const checked = e.target.checked;
+                              if (checked) {
+                                field.onChange([...field.value, role.id]);
+                              } else {
+                                field.onChange(field.value.filter(id => id !== role.id));
+                              }
+                            }}
+                          />
+                          <label htmlFor={`edit-role-${role.id}`} className="text-sm">{role.name}</label>
+                        </div>
+                      ))}
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )}

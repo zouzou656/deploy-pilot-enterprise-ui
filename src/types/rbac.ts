@@ -3,7 +3,7 @@
 export interface UserListItem {
   id: string;
   email: string;
-  roleId: string;
+  roleIds: string[]; // Changed from roleId to roleIds for multiple roles
   lastLogin: string | null;
   status: 'active' | 'inactive' | 'pending';
 }
@@ -11,23 +11,26 @@ export interface UserListItem {
 export interface UserDetails extends UserListItem {
   firstName?: string;
   lastName?: string;
+  permissions?: string[]; // Direct permissions not tied to roles
 }
 
 export interface CreateUserPayload {
   email: string;
   password: string;
-  roleId: string;
+  roleIds: string[]; // Changed from roleId to roleIds
   firstName?: string;
   lastName?: string;
+  permissions?: string[]; // Optional direct permissions
   status?: 'active' | 'inactive' | 'pending';
 }
 
 export interface UpdateUserPayload {
   email?: string;
   password?: string; // Only if changing password
-  roleId?: string;
+  roleIds?: string[]; // Changed from roleId to roleIds
   firstName?: string;
   lastName?: string;
+  permissions?: string[]; // Optional direct permissions
   status?: 'active' | 'inactive' | 'pending';
 }
 
@@ -35,6 +38,7 @@ export interface Permission {
   id: string;
   name: string;
   description: string;
+  group: string; // Permissions are grouped (e.g. "Users", "Roles", etc.)
 }
 
 export interface Role {

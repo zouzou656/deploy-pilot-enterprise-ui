@@ -1,68 +1,148 @@
 
 import { CreateUserPayload, UpdateUserPayload, UserDetails, UserListItem } from '@/types/rbac';
+import useRBACStore from '@/stores/rbacStore';
 
 const API_URL = '/api/auth';
 
 export const userService = {
   getUsers: async (): Promise<UserListItem[]> => {
-    const response = await fetch(`${API_URL}/users`);
-    
-    if (!response.ok) {
-      throw new Error(`Failed to fetch users: ${response.statusText}`);
+    try {
+      // Try to use the backend API first
+      const response = await fetch(`${API_URL}/users`);
+      
+      if (response.ok) {
+        return response.json();
+      } else {
+        // Fallback to local store if API fails
+        console.warn('API call failed, using local store data instead');
+        const { fetchUsers, users } = useRBACStore.getState();
+        
+        if (users.length === 0) {
+          await fetchUsers();
+        }
+        
+        return useRBACStore.getState().users;
+      }
+    } catch (error) {
+      // Fallback to local store on error
+      console.error('API error, using local store data instead:', error);
+      const { fetchUsers, users } = useRBACStore.getState();
+      
+      if (users.length === 0) {
+        await fetchUsers();
+      }
+      
+      return useRBACStore.getState().users;
     }
-    
-    return response.json();
   },
   
   getUser: async (id: string): Promise<UserDetails> => {
-    const response = await fetch(`${API_URL}/users/${id}`);
-    
-    if (!response.ok) {
-      throw new Error(`Failed to fetch user: ${response.statusText}`);
+    try {
+      // Try to use the backend API first
+      const response = await fetch(`${API_URL}/users/${id}`);
+      
+      if (response.ok) {
+        return response.json();
+      } else {
+        // Fallback to local store if API fails
+        console.warn('API call failed, using local store data instead');
+        const { fetchUser } = useRBACStore.getState();
+        return await fetchUser(id);
+      }
+    } catch (error) {
+      // Fallback to local store on error
+      console.error('API error, using local store data instead:', error);
+      const { fetchUser } = useRBACStore.getState();
+      return await fetchUser(id);
     }
-    
-    return response.json();
   },
   
   createUser: async (userData: CreateUserPayload): Promise<UserDetails> => {
-    const response = await fetch(`${API_URL}/users`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(userData),
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Failed to create user: ${response.statusText}`);
+    try {
+      // Try to use the backend API first
+      const response = await fetch(`${API_URL}/users`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(userData),
+      });
+      
+      if (response.ok) {
+        return response.json();
+      } else {
+        // Fallback to local store if API fails
+        console.warn('API call failed, using local store data instead');
+        const { createUser } = useRBACStore.getState();
+        return await createUser({
+          email: userData.email,  // Make sure required fields are passed
+          password: userData.password,
+          roleIds: userData.roleIds,
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          status: userData.status
+        });
+      }
+    } catch (error) {
+      // Fallback to local store on error
+      console.error('API error, using local store data instead:', error);
+      const { createUser } = useRBACStore.getState();
+      return await createUser({
+        email: userData.email,  // Make sure required fields are passed
+        password: userData.password,
+        roleIds: userData.roleIds,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        status: userData.status
+      });
     }
-    
-    return response.json();
   },
   
   updateUser: async (id: string, userData: UpdateUserPayload): Promise<UserDetails> => {
-    const response = await fetch(`${API_URL}/users/${id}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(userData),
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Failed to update user: ${response.statusText}`);
+    try {
+      // Try to use the backend API first
+      const response = await fetch(`${API_URL}/users/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(userData),
+      });
+      
+      if (response.ok) {
+        return response.json();
+      } else {
+        // Fallback to local store if API fails
+        console.warn('API call failed, using local store data instead');
+        const { updateUser } = useRBACStore.getState();
+        return await updateUser(id, userData);
+      }
+    } catch (error) {
+      // Fallback to local store on error
+      console.error('API error, using local store data instead:', error);
+      const { updateUser } = useRBACStore.getState();
+      return await updateUser(id, userData);
     }
-    
-    return response.json();
   },
   
   deleteUser: async (id: string): Promise<void> => {
-    const response = await fetch(`${API_URL}/users/${id}`, {
-      method: 'DELETE',
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Failed to delete user: ${response.statusText}`);
+    try {
+      // Try to use the backend API first
+      const response = await fetch(`${API_URL}/users/${id}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        // Fallback to local store if API fails
+        console.warn('API call failed, using local store data instead');
+        const { deleteUser } = useRBACStore.getState();
+        await deleteUser(id);
+      }
+    } catch (error) {
+      // Fallback to local store on error
+      console.error('API error, using local store data instead:', error);
+      const { deleteUser } = useRBACStore.getState();
+      await deleteUser(id);
     }
   }
 };

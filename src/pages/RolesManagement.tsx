@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { roleService } from '@/services/roleService';
 import { useToast } from '@/hooks/use-toast';
@@ -60,38 +60,8 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Textarea } from '@/components/ui/textarea';
 import useAuthStore, { PERMISSIONS } from '@/stores/authStore';
-import { Role } from '@/types/rbac';
-
-// Define available permissions
-// In a real app, these would come from an API
-const AVAILABLE_PERMISSIONS = [
-  { id: 'user:view', name: 'View Users', description: 'Can view user list and details', group: 'Users' },
-  { id: 'user:create', name: 'Create Users', description: 'Can create new users', group: 'Users' },
-  { id: 'user:edit', name: 'Edit Users', description: 'Can edit existing users', group: 'Users' },
-  { id: 'user:delete', name: 'Delete Users', description: 'Can delete users', group: 'Users' },
-  { id: 'role:view', name: 'View Roles', description: 'Can view role list and details', group: 'Roles' },
-  { id: 'role:create', name: 'Create Roles', description: 'Can create new roles', group: 'Roles' },
-  { id: 'role:edit', name: 'Edit Roles', description: 'Can edit existing roles', group: 'Roles' },
-  { id: 'role:delete', name: 'Delete Roles', description: 'Can delete roles', group: 'Roles' },
-  { id: 'git:view', name: 'View Git', description: 'Can view git repositories and branches', group: 'Git' },
-  { id: 'git:pull', name: 'Pull Git', description: 'Can pull from git repositories', group: 'Git' },
-  { id: 'git:push', name: 'Push Git', description: 'Can push to git repositories', group: 'Git' },
-  { id: 'deployment:view', name: 'View Deployments', description: 'Can view deployment history', group: 'Deployment' },
-  { id: 'deployment:create', name: 'Create Deployments', description: 'Can create new deployments', group: 'Deployment' },
-  { id: 'deployment:cancel', name: 'Cancel Deployments', description: 'Can cancel ongoing deployments', group: 'Deployment' },
-  { id: 'settings:view', name: 'View Settings', description: 'Can view system settings', group: 'Settings' },
-  { id: 'settings:edit', name: 'Edit Settings', description: 'Can edit system settings', group: 'Settings' },
-];
-
-// Group permissions by their group property
-const PERMISSION_GROUPS = AVAILABLE_PERMISSIONS.reduce((groups, permission) => {
-  const group = permission.group;
-  if (!groups[group]) {
-    groups[group] = [];
-  }
-  groups[group].push(permission);
-  return groups;
-}, {} as Record<string, typeof AVAILABLE_PERMISSIONS>);
+import { Role, Permission } from '@/types/rbac';
+import useRBACStore, { mockPermissions } from '@/stores/rbacStore';
 
 const roleFormSchema = z.object({
   name: z.string().min(2, { message: 'Role name must be at least 2 characters' }),
@@ -111,6 +81,25 @@ const RolesManagement = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [permissions, setPermissions] = useState<Permission[]>(mockPermissions);
+  
+  // Initialize RBAC store
+  useEffect(() => {
+    const { fetchUsers, fetchRoles, fetchPermissions } = useRBACStore.getState();
+    fetchUsers();
+    fetchRoles();
+    fetchPermissions();
+  }, []);
+  
+  // Create permission groups from available permissions
+  const permissionGroups = permissions.reduce((groups, permission) => {
+    const group = permission.group;
+    if (!groups[group]) {
+      groups[group] = [];
+    }
+    groups[group].push(permission);
+    return groups;
+  }, {} as Record<string, Permission[]>);
   
   // Fetch roles
   const { data: roles = [], isLoading: isLoadingRoles } = useQuery({
@@ -120,7 +109,7 @@ const RolesManagement = () => {
   
   // Create role mutation
   const createRoleMutation = useMutation({
-    mutationFn: roleService.createRole,
+    mutationFn: (data: any) => roleService.createRole(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['roles'] });
       setIsCreateDialogOpen(false);
@@ -203,7 +192,11 @@ const RolesManagement = () => {
   
   // Handle create role form submission
   const onCreateSubmit = (values: RoleFormValues) => {
-    createRoleMutation.mutate(values);
+    createRoleMutation.mutate({
+      name: values.name,
+      permissions: values.permissions,
+      description: values.description || ''
+    });
   };
   
   // Handle update role form submission
@@ -211,7 +204,11 @@ const RolesManagement = () => {
     if (selectedRole) {
       updateRoleMutation.mutate({
         id: selectedRole.id,
-        data: values,
+        data: {
+          name: values.name,
+          permissions: values.permissions,
+          description: values.description
+        },
       });
     }
   };
@@ -241,7 +238,7 @@ const RolesManagement = () => {
   // Count permissions by group for a role
   const countPermissionsByGroup = (role: Role, group: string) => {
     if (!role.permissions) return 0;
-    return PERMISSION_GROUPS[group]?.filter(p => 
+    return permissionGroups[group]?.filter(p => 
       role.permissions.includes(p.id)
     ).length || 0;
   };
@@ -298,11 +295,11 @@ const RolesManagement = () => {
                 <div className="text-sm">
                   <div className="font-medium mb-2">Permissions ({totalPermissions(role)})</div>
                   <div className="grid grid-cols-2 gap-2">
-                    {Object.keys(PERMISSION_GROUPS).map(group => (
+                    {Object.keys(permissionGroups).map(group => (
                       <div key={group} className="flex items-center justify-between">
                         <span>{group}</span>
                         <span className="text-muted-foreground">
-                          {countPermissionsByGroup(role, group)}/{PERMISSION_GROUPS[group].length}
+                          {countPermissionsByGroup(role, group)}/{permissionGroups[group].length}
                         </span>
                       </div>
                     ))}
@@ -389,11 +386,11 @@ const RolesManagement = () => {
                     </FormDescription>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 border rounded-md p-4 mt-2">
-                      {Object.entries(PERMISSION_GROUPS).map(([group, permissions]) => (
+                      {Object.entries(permissionGroups).map(([group, perms]) => (
                         <div key={group} className="space-y-2">
                           <h4 className="font-medium text-sm border-b pb-1">{group}</h4>
                           <div className="space-y-1">
-                            {permissions.map((permission) => (
+                            {perms.map((permission) => (
                               <FormField
                                 key={permission.id}
                                 control={createForm.control}
@@ -504,11 +501,11 @@ const RolesManagement = () => {
                     </FormDescription>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 border rounded-md p-4 mt-2">
-                      {Object.entries(PERMISSION_GROUPS).map(([group, permissions]) => (
+                      {Object.entries(permissionGroups).map(([group, perms]) => (
                         <div key={group} className="space-y-2">
                           <h4 className="font-medium text-sm border-b pb-1">{group}</h4>
                           <div className="space-y-1">
-                            {permissions.map((permission) => (
+                            {perms.map((permission) => (
                               <FormField
                                 key={permission.id}
                                 control={updateForm.control}
