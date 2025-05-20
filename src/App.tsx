@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -24,6 +23,7 @@ import Settings from "./pages/Settings";
 import ApiExplorer from "./pages/ApiExplorer";
 import UsersManagement from "./pages/UsersManagement";
 import RolesManagement from "./pages/RolesManagement";
+import ProjectManagement from "./pages/ProjectManagement";
 
 // Layout
 import AppLayout from "./components/layout/AppLayout";
@@ -82,6 +82,19 @@ const App = () => {
                 </AuthGuard>
               }
             />
+
+            {/* Project Management Route */}
+            <Route
+              path="/projects"
+              element={
+                <AuthGuard requiredPermission={PERMISSIONS.USER_VIEW}>
+                  <AppLayout>
+                    <ProjectManagement />
+                  </AppLayout>
+                </AuthGuard>
+              }
+            />
+
             <Route
               path="/git"
               element={
@@ -92,10 +105,11 @@ const App = () => {
                 </AuthGuard>
               }
             />
+            
             <Route
               path="/api-explorer"
               element={
-                <AuthGuard requiredRole="DEVELOPER">
+                <AuthGuard requiredPermission="user:view">
                   <AppLayout>
                     <ApiExplorer />
                   </AppLayout>
