@@ -66,14 +66,16 @@ export default function JarGeneration() {
             .then(r => r.json() as Promise<{ sha: string; message: string }[]>),
   });
 
-  // 3) Manual‐mode file list
+  // 3) Manual‐mode file list - Fixed to ensure it's called when in manual mode
   const { data: allFiles = [] } = useQuery({
     queryKey: ['allFiles', selectedProjectId, branch],
-    enabled: strategy === 'manual' && !!selectedProjectId && !!branch,
+    enabled: !!selectedProjectId && !!branch, // Always enabled when project and branch are selected
     queryFn: () =>
         fetch(`${API}/git/tree?projectId=${selectedProjectId}&branch=${encodeURIComponent(branch)}`)
             .then(r => r.json() as Promise<string[]>),
   });
+  
+  // Map files for manual mode
   const manualFiles = useMemo(() => {
     if (strategy !== 'manual') return [];
     return allFiles.map(filename => ({ filename, status: 'unmodified' as const }));
@@ -99,10 +101,10 @@ export default function JarGeneration() {
   // keep previewBase in sync
   useEffect(() => void setPreviewBase(initialBase), [initialBase]);
 
-  // 5) Full‐build fetch
+  // 5) Full‐build fetch - Fixed to always fetch when in full mode with branch selected
   const { data: fullCmp, isFetching: loadingFull } = useQuery({
-    queryKey: ['full', selectedProjectId, branch],
-    enabled: strategy === 'full' && !!selectedProjectId && !!branch,
+    queryKey: ['full', selectedProjectId, branch, strategy],
+    enabled: strategy === 'full' && !!selectedProjectId && !!branch && !!initialBase && !!initialHead,
     queryFn: () =>
         fetch(`${API}/git/full?projectId=${selectedProjectId}&branch=${encodeURIComponent(branch)}`)
             .then(r => { if (!r.ok) throw new Error(); return r.json() as Promise<{ files: FileEntry[] }>; }),
@@ -110,7 +112,7 @@ export default function JarGeneration() {
 
   // 6) Single‐commit compare fetch
   const { data: commitCmp, isFetching: loadingCommitCmp } = useQuery({
-    queryKey: ['compare', selectedProjectId, initialBase, initialHead],
+    queryKey: ['compare', selectedProjectId, initialBase, initialHead, strategy],
     enabled:
         strategy === 'commit' &&
         !!selectedProjectId &&
@@ -206,6 +208,16 @@ export default function JarGeneration() {
 
   const previewTabDisabled = strategy === 'manual';
 
+  // Debug logs to trace API call issues
+  useEffect(() => {
+    console.log('Strategy changed:', strategy);
+    console.log('Branch selected:', branch);
+    console.log('Project ID:', selectedProjectId);
+    console.log('Full build enabled:', strategy === 'full' && !!selectedProjectId && !!branch && !!initialBase && !!initialHead);
+    console.log('Manual files count:', manualFiles.length);
+    console.log('Initial base/head:', initialBase, initialHead);
+  }, [strategy, branch, selectedProjectId, initialBase, initialHead, manualFiles.length]);
+
   return (
       <div className="space-y-6">
         <PageHeader title="JAR Generation" description="Select settings → pick files → preview diffs → review → generate" />
@@ -234,7 +246,6 @@ export default function JarGeneration() {
         <div className="mt-8">
           {currentStep==='config' && (
               <ConfigStep
-                  projectId={selectedProjectId}
                   branches={branches} branch={branch} setBranch={handleBranchSelection}
                   commits={commits} version={version} setVersion={setVersion}
                   strategy={strategy} setStrategy={handleStrategySelection}
