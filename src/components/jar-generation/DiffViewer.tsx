@@ -3,7 +3,7 @@ import React from 'react';
 import { Diff, Hunk, parseDiff } from 'react-diff-view';
 import 'react-diff-view/style/index.css';
 
-type FileEntry = { 
+export type FileEntry = { 
   filename: string; 
   status: string; 
   patch?: string;

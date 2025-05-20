@@ -1,12 +1,13 @@
 
-import React from 'react';
-import { Eye, Maximize2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { Eye, Maximize2, Check, X } from 'lucide-react';
 import {
   Card,
   CardHeader,
   CardTitle,
   CardContent,
   CardDescription,
+  CardFooter,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -20,8 +21,10 @@ import {
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import { Switch } from '@/components/ui/switch';
 import DiffViewer from './DiffViewer';
 import { TreeView, FileEntry, TreeNode } from './FileTree';
+import { FileOverride } from '@/types/project';
 
 type PreviewStepProps = {
   previewTabDisabled: boolean;
@@ -36,6 +39,11 @@ type PreviewStepProps = {
   selectedFiles: string[];
   highlighted: FileEntry | null;
   setHighlighted: (file: FileEntry | null) => void;
+  projectId: string;
+  environmentId: string | null;
+  fileOverrides: FileOverride[];
+  applyOverrides: boolean;
+  setApplyOverrides: (apply: boolean) => void;
   handleGenerate: () => void;
 };
 
@@ -52,6 +60,11 @@ const PreviewStep: React.FC<PreviewStepProps> = ({
   selectedFiles,
   highlighted,
   setHighlighted,
+  projectId,
+  environmentId,
+  fileOverrides,
+  applyOverrides,
+  setApplyOverrides,
   handleGenerate,
 }) => {
   return (
@@ -67,7 +80,7 @@ const PreviewStep: React.FC<PreviewStepProps> = ({
           Preview &amp; Generate
         </CardTitle>
         <CardDescription>
-          Override the "From" SHA to re-diff just your selected files
+          Review your changes and apply file overrides before generating the JAR
         </CardDescription>
       </CardHeader>
 
@@ -204,9 +217,70 @@ const PreviewStep: React.FC<PreviewStepProps> = ({
             </div>
           </>
         )}
+        
+        {/* File Overrides Section */}
+        {environmentId && fileOverrides.length > 0 && (
+          <div className="mt-6 border-t pt-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold">File Overrides</h3>
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="applyOverrides"
+                  checked={applyOverrides}
+                  onCheckedChange={setApplyOverrides}
+                />
+                <Label htmlFor="applyOverrides">Apply Overrides</Label>
+              </div>
+            </div>
+            
+            <ScrollArea className="h-48 border rounded">
+              <table className="w-full">
+                <thead className="bg-muted/50">
+                  <tr>
+                    <th className="py-2 px-3 text-left text-sm font-medium">Filename</th>
+                    <th className="py-2 px-3 text-left text-sm font-medium">Type</th>
+                    <th className="py-2 px-3 text-left text-sm font-medium">Original Value</th>
+                    <th className="py-2 px-3 text-left text-sm font-medium">Override Value</th>
+                    <th className="py-2 px-3 text-left text-sm font-medium">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {fileOverrides.map((override) => (
+                    <tr key={override.id} className="border-t">
+                      <td className="py-2 px-3 text-sm">{override.filename}</td>
+                      <td className="py-2 px-3 text-sm">{override.fileType}</td>
+                      <td className="py-2 px-3 text-sm font-mono">{override.originalValue}</td>
+                      <td className="py-2 px-3 text-sm font-mono">{override.overrideValue}</td>
+                      <td className="py-2 px-3 text-sm">
+                        {applyOverrides ? (
+                          <span className="flex items-center text-green-600">
+                            <Check className="h-4 w-4 mr-1" /> Will Apply
+                          </span>
+                        ) : (
+                          <span className="flex items-center text-red-600">
+                            <X className="h-4 w-4 mr-1" /> Not Applied
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                  
+                  {fileOverrides.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="py-4 px-3 text-center text-muted-foreground">
+                        No file overrides found for this environment.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </ScrollArea>
+          </div>
+        )}
+        
         <div className="flex justify-end mt-6">
           <Button size="lg" onClick={handleGenerate}>
-            Generate JAR
+            Continue to Summary
           </Button>
         </div>
       </CardContent>

@@ -1,23 +1,29 @@
 
 import React from 'react';
-import { 
-  Card, 
-  CardHeader, 
-  CardTitle, 
-  CardDescription, 
+import { CheckCircle } from 'lucide-react';
+import {
+  Card,
+  CardHeader,
+  CardTitle,
   CardContent,
-  CardFooter 
+  CardDescription,
+  CardFooter,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { Project, ProjectEnvironment, FileOverride } from '@/types/project';
 import { FileEntry } from './FileTree';
-import { Package, ArrowRight, CheckCircle } from 'lucide-react';
 
 type SummaryStepProps = {
   branch: string;
   version: string;
-  strategy: string;
+  strategy: 'commit' | 'full' | 'manual';
   selectedFiles: string[];
-  filesToShow: FileEntry[];
+  filesToShow: {filename: string, status: string}[];
+  project: Project | null;
+  environment: ProjectEnvironment | null;
+  applyOverrides: boolean;
+  fileOverrides: FileOverride[];
   onConfirm: () => void;
   onBack: () => void;
 };
@@ -28,94 +34,152 @@ const SummaryStep: React.FC<SummaryStepProps> = ({
   strategy,
   selectedFiles,
   filesToShow,
+  project,
+  environment,
+  applyOverrides,
+  fileOverrides,
   onConfirm,
-  onBack
+  onBack,
 }) => {
-  // Group selected files by status
-  const filesByStatus: Record<string, number> = {};
-  selectedFiles.forEach(filename => {
-    const file = filesToShow.find(f => f.filename === filename);
-    if (file) {
-      const status = file.status || 'unknown';
-      filesByStatus[status] = (filesByStatus[status] || 0) + 1;
-    }
-  });
-
-  const statusLabels: Record<string, string> = {
-    'added': 'Added',
-    'modified': 'Modified',
-    'deleted': 'Deleted',
-    'renamed': 'Renamed',
-    'unmodified': 'Unchanged',
-    'unknown': 'Unknown'
-  };
+  const statusCounts = selectedFiles.reduce<Record<string, number>>(
+    (acc, filename) => {
+      const file = filesToShow.find(f => f.filename === filename);
+      const status = file?.status || 'unchanged';
+      acc[status] = (acc[status] || 0) + 1;
+      return acc;
+    },
+    {}
+  );
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Package className="h-5 w-5" />
-          Build Summary
+        <CardTitle>
+          <CheckCircle className="inline-block mr-2" />
+          Summary
         </CardTitle>
-        <CardDescription>
-          Review your JAR generation settings before proceeding
-        </CardDescription>
+        <CardDescription>Review your JAR generation settings before confirming</CardDescription>
       </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Configuration</h3>
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Branch:</span>
-                <span className="font-medium">{branch}</span>
+      <CardContent className="space-y-4">
+        {/* Project and Environment */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="border rounded-lg p-4 bg-card">
+            <h3 className="text-lg font-semibold mb-2">Project</h3>
+            {project ? (
+              <div className="space-y-1">
+                <p><span className="font-medium">Name:</span> {project.name}</p>
+                {project.description && (
+                  <p><span className="font-medium">Description:</span> {project.description}</p>
+                )}
+                <p><span className="font-medium">Repository:</span> <span className="font-mono text-xs">{project.gitRepoUrl}</span></p>
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Version:</span>
-                <span className="font-medium">{version}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Build Mode:</span>
-                <span className="font-medium capitalize">{strategy}</span>
-              </div>
-            </div>
+            ) : (
+              <p className="text-muted-foreground">No project selected</p>
+            )}
           </div>
-
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Files</h3>
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Total files:</span>
-                <span className="font-medium">{selectedFiles.length}</span>
+          
+          <div className="border rounded-lg p-4 bg-card">
+            <h3 className="text-lg font-semibold mb-2">Environment</h3>
+            {environment ? (
+              <div className="space-y-1">
+                <p><span className="font-medium">Name:</span> {environment.name}</p>
+                <p><span className="font-medium">Host:</span> {environment.host}:{environment.port}</p>
+                <p><span className="font-medium">Type:</span> {environment.isProduction ? 'Production' : 'Non-Production'}</p>
               </div>
-              
-              {Object.entries(filesByStatus).map(([status, count]) => (
-                <div key={status} className="flex justify-between">
-                  <span className="text-muted-foreground">{statusLabels[status] || status}:</span>
-                  <span className="font-medium">{count}</span>
-                </div>
+            ) : (
+              <p className="text-muted-foreground">No environment selected</p>
+            )}
+          </div>
+        </div>
+        
+        {/* Build Settings */}
+        <div className="border rounded-lg p-4 bg-card">
+          <h3 className="text-lg font-semibold mb-2">Build Settings</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <p><span className="font-medium">Branch:</span> {branch}</p>
+              <p><span className="font-medium">Build Strategy:</span> {strategy === 'full' ? 'Full Build' : strategy === 'commit' ? 'Single Commit' : 'Manual Selection'}</p>
+              <p><span className="font-medium">Version:</span> {version}</p>
+            </div>
+            <div>
+              <p><span className="font-medium">Total Files:</span> {selectedFiles.length}</p>
+              {Object.entries(statusCounts).map(([status, count]) => (
+                <p key={status}><span className="font-medium">{status === 'modify' ? 'Modified' : status === 'add' ? 'Added' : status === 'delete' ? 'Deleted' : 'Unchanged'}:</span> {count}</p>
               ))}
             </div>
           </div>
         </div>
-
-        <div className="mt-8 bg-muted/30 p-4 rounded-lg border border-muted">
-          <h3 className="text-base font-semibold flex items-center gap-2">
-            <CheckCircle className="h-5 w-5 text-green-500" />
-            Ready to Build
-          </h3>
-          <p className="mt-2 text-muted-foreground">
-            Your JAR will be generated using {selectedFiles.length} files from the {branch} branch.
-            The build will use the {strategy} strategy and will be versioned as {version}.
-          </p>
+        
+        {/* File Overrides */}
+        <div className="border rounded-lg p-4 bg-card">
+          <h3 className="text-lg font-semibold mb-2">File Overrides</h3>
+          {environment && fileOverrides.length > 0 ? (
+            <div className="space-y-2">
+              <p>
+                <span className="font-medium">Status:</span> 
+                {applyOverrides ? (
+                  <span className="text-green-600 ml-1">Will apply {fileOverrides.length} file overrides</span>
+                ) : (
+                  <span className="text-amber-600 ml-1">Overrides disabled</span>
+                )}
+              </p>
+              
+              {applyOverrides && (
+                <div>
+                  <p className="font-medium mb-1">Overrides to be applied:</p>
+                  <ul className="list-disc pl-5 text-sm space-y-1">
+                    {fileOverrides.map((override) => (
+                      <li key={override.id}>
+                        {override.filename}: <span className="font-mono">{override.originalValue}</span> → <span className="font-mono">{override.overrideValue}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-muted-foreground">No file overrides available</p>
+          )}
         </div>
+        
+        {/* Selected Files */}
+        <div className="border rounded-lg p-4 bg-card">
+          <h3 className="text-lg font-semibold mb-2">Selected Files</h3>
+          {selectedFiles.length > 0 ? (
+            <div className="max-h-40 overflow-auto">
+              <ul className="list-disc pl-5 text-sm">
+                {selectedFiles.slice(0, 10).map((filename) => (
+                  <li key={filename} className="mb-1">
+                    <code className="text-xs font-mono">{filename}</code>
+                  </li>
+                ))}
+                {selectedFiles.length > 10 && (
+                  <li className="text-muted-foreground">
+                    ...and {selectedFiles.length - 10} more files
+                  </li>
+                )}
+              </ul>
+            </div>
+          ) : (
+            <p className="text-muted-foreground">No files selected</p>
+          )}
+        </div>
+        
+        <Alert className="mt-6">
+          <AlertTitle>Ready to generate JAR?</AlertTitle>
+          <AlertDescription>
+            This will generate a JAR file with {selectedFiles.length} files for {project?.name || 'the selected project'}
+            {environment && ` targeting the ${environment.name} environment`}.
+            {applyOverrides && fileOverrides.length > 0 && ` ${fileOverrides.length} file overrides will be applied.`}
+          </AlertDescription>
+        </Alert>
       </CardContent>
       <CardFooter className="flex justify-between">
         <Button variant="outline" onClick={onBack}>
           Back
         </Button>
-        <Button onClick={onConfirm} className="gap-2">
-          Generate JAR <ArrowRight className="h-4 w-4" />
+        <Button onClick={onConfirm}>
+          Generate JAR
         </Button>
       </CardFooter>
     </Card>
