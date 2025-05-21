@@ -5,7 +5,7 @@
  */
 
 export const API_CONFIG = {
-  BASE_URL: 'http://localhost:5050',
+  BASE_URL: 'http://localhost:5020',
   ENDPOINTS: {
     // Auth endpoints
     AUTH: {
@@ -20,8 +20,11 @@ export const API_CONFIG = {
       CREATE: '/api/auth/users',
       UPDATE: '/api/auth/users/:id',
       DELETE: '/api/auth/users/:id',
-      ASSIGN_PROJECT: '/api/auth/users/:id/projects',
-      REMOVE_PROJECT: '/api/auth/users/:id/projects/:projectId',
+      ASSIGN_ROLE: '/api/auth/users/:id/roles/:roleId',
+      REMOVE_ROLE: '/api/auth/users/:id/roles/:roleId',
+      USER_PERMISSIONS: '/api/auth/permissions/user/:userId',
+      ADD_PERMISSION: '/api/auth/permissions/user/:userId/:permId',
+      REMOVE_PERMISSION: '/api/auth/permissions/user/:userId/:permId',
     },
     // Role management
     ROLES: {
@@ -30,6 +33,17 @@ export const API_CONFIG = {
       CREATE: '/api/auth/roles',
       UPDATE: '/api/auth/roles/:id',
       DELETE: '/api/auth/roles/:id',
+      ROLE_PERMISSIONS: '/api/auth/permissions/role/:roleId',
+      ADD_PERMISSION: '/api/auth/permissions/role/:roleId/:permId',
+      REMOVE_PERMISSION: '/api/auth/permissions/role/:roleId/:permId',
+    },
+    // Permission management
+    PERMISSIONS: {
+      LIST: '/api/auth/permissions',
+      GET: '/api/auth/permissions/:id',
+      CREATE: '/api/auth/permissions',
+      UPDATE: '/api/auth/permissions/:id',
+      DELETE: '/api/auth/permissions/:id',
     },
     // Project management
     PROJECTS: {
@@ -38,7 +52,9 @@ export const API_CONFIG = {
       CREATE: '/api/projects',
       UPDATE: '/api/projects/:id',
       DELETE: '/api/projects/:id',
-      USER_PROJECTS: '/api/projects/user',
+      USER_PROJECTS: '/api/projects/user/:userId',
+      ASSIGN_USER: '/api/projects/:projectId/users/:userId',
+      REMOVE_USER: '/api/projects/:projectId/users/:userId',
     },
     // Environment management
     ENVIRONMENTS: {

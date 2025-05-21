@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import useAuthStore from '@/stores/authStore';
 
 const LoginForm = () => {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const { login, error, loading } = useAuthStore();
@@ -18,17 +18,17 @@ const LoginForm = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!username || !password) {
+    if (!email || !password) {
       toast({
         title: 'Validation Error',
-        description: 'Username and password are required',
+        description: 'Email and password are required',
         variant: 'destructive',
       });
       return;
     }
     
     try {
-      await login(username, password);
+      await login(email, password);
     } catch (error) {
       // Error is handled in the store
       console.error('Login error:', error);
@@ -36,28 +36,28 @@ const LoginForm = () => {
   };
 
   const handleDemoLogin = async (role: string) => {
-    let demoUsername, demoPassword;
+    let demoEmail, demoPassword;
     
     switch (role) {
       case 'admin':
-        demoUsername = 'admin';
+        demoEmail = 'admin@example.com';
         demoPassword = 'admin123';
         break;
       case 'developer':
-        demoUsername = 'developer';
+        demoEmail = 'developer@example.com';
         demoPassword = 'dev123';
         break;
       case 'viewer':
-        demoUsername = 'viewer';
+        demoEmail = 'viewer@example.com';
         demoPassword = 'view123';
         break;
       default:
         return;
     }
     
-    setUsername(demoUsername);
+    setEmail(demoEmail);
     setPassword(demoPassword);
-    await login(demoUsername, demoPassword);
+    await login(demoEmail, demoPassword);
   };
 
   return (
@@ -76,13 +76,13 @@ const LoginForm = () => {
         )}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="username">Username</Label>
+            <Label htmlFor="email">Email</Label>
             <Input
-              id="username"
-              type="text"
-              placeholder="Enter your username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              id="email"
+              type="email"
+              placeholder="Enter your email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               disabled={loading}
             />
           </div>

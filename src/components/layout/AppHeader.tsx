@@ -21,7 +21,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({ onCommandPalette }) => {
   // Safely calculate user initials, handling undefined values
   const userInitials = user ? (
     `${user.firstName?.charAt(0) || ''}${user.lastName?.charAt(0) || ''}`.toUpperCase() ||
-    (user.username ? user.username.substring(0, 2).toUpperCase() : 'UN')
+    (user.email ? user.email.substring(0, 2).toUpperCase() : 'UN')
   ) : 'UN';
 
   return (
@@ -72,7 +72,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({ onCommandPalette }) => {
               <Button variant="ghost" size="icon" className="rounded-full">
                 <Avatar>
                   {user?.avatarUrl ? (
-                      <AvatarImage src={user.avatarUrl} alt={user.username || 'User'} />
+                      <AvatarImage src={user.avatarUrl} alt={user.email || 'User'} />
                   ) : null}
                   <AvatarFallback>{userInitials}</AvatarFallback>
                 </Avatar>

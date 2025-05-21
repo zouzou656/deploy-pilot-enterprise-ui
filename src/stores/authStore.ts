@@ -39,7 +39,8 @@ export const PERMISSIONS = {
 };
 
 interface AuthStore extends AuthState {
-  login: (username: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
+  refreshToken: () => Promise<boolean>;
   logout: () => void;
   checkPermission: (requiredRole: Role) => boolean;
   hasPermission: (permission: string) => boolean;
@@ -80,14 +81,14 @@ const initialState = {
 const useAuthStore = create<AuthStore>((set, get) => ({
   ...initialState as AuthState,
   
-  login: async (username: string, password: string) => {
+  login: async (email: string, password: string) => {
     set({ loading: true, error: null });
     
     try {
       // Use our API client to make the login request
       const response = await apiClient.post(
         API_CONFIG.ENDPOINTS.AUTH.LOGIN,
-        { username, password },
+        { email, password },
         { requiresAuth: false }
       );
       
@@ -126,7 +127,60 @@ const useAuthStore = create<AuthStore>((set, get) => ({
     }
   },
   
+  refreshToken: async () => {
+    const currentRefreshToken = get().refreshToken;
+    
+    if (!currentRefreshToken) {
+      return false;
+    }
+    
+    try {
+      const response = await apiClient.post(
+        API_CONFIG.ENDPOINTS.AUTH.REFRESH,
+        { refreshToken: currentRefreshToken },
+        { requiresAuth: false }
+      );
+      
+      if (response.error || !response.data) {
+        throw new Error(response.error || 'Token refresh failed');
+      }
+      
+      const { user, token, refreshToken } = response.data;
+      
+      // Update localStorage
+      localStorage.setItem('token', token);
+      localStorage.setItem('refreshToken', refreshToken);
+      localStorage.setItem('user', JSON.stringify(user));
+      
+      set({
+        isAuthenticated: true,
+        user,
+        token,
+        refreshToken,
+        error: null,
+      });
+      
+      return true;
+    } catch (error) {
+      console.error('Failed to refresh token:', error);
+      // Don't logout here, let the caller decide what to do
+      return false;
+    }
+  },
+  
   logout: () => {
+    const currentRefreshToken = get().refreshToken;
+    
+    // Attempt to call logout API if we have a refresh token
+    if (currentRefreshToken) {
+      apiClient.post(
+        API_CONFIG.ENDPOINTS.AUTH.LOGOUT,
+        { refreshToken: currentRefreshToken }
+      ).catch(error => {
+        console.error('Error during logout:', error);
+      });
+    }
+    
     // Clear localStorage
     localStorage.removeItem('token');
     localStorage.removeItem('refreshToken');

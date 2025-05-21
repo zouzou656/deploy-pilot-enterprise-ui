@@ -1,9 +1,10 @@
+
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Sidebar, SidebarContent, useSidebar } from '@/components/ui/sidebar';
+import { Sidebar, SidebarContent } from '@/components/ui/sidebar';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   Code2,
@@ -39,8 +40,9 @@ const NavItem: React.FC<NavItemProps> = ({
   permission,
   requiredRole = 'VIEWER',
 }) => {
-  const { collapsed } = useSidebar();
   const { checkPermission, hasPermission } = useAuthStore();
+  // Get collapsed state from document attribute instead of context
+  const collapsed = document.documentElement.classList.contains('sidebar-collapsed');
 
   // Check if user has permission to see this item
   if (permission && !hasPermission(permission)) return null;
@@ -75,7 +77,8 @@ const NavItem: React.FC<NavItemProps> = ({
 
 const AppSidebar: React.FC = () => {
   const location = useLocation();
-  const { collapsed } = useSidebar();
+  // Get collapsed state from document attribute instead of context
+  const collapsed = document.documentElement.classList.contains('sidebar-collapsed');
 
   const isActive = (path: string) => {
     return location.pathname === path;

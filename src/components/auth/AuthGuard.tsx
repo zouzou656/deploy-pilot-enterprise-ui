@@ -22,8 +22,6 @@ const AuthGuard: React.FC<AuthGuardProps> = ({
   const { isAuthenticated, user, loading, checkPermission, hasPermission } = useAuthStore();
   const location = useLocation();
 
-  // Note: Removed refreshUserToken as it doesn't exist in the store
-
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -66,8 +64,8 @@ const AuthGuard: React.FC<AuthGuardProps> = ({
     return <Navigate to="/unauthorized" replace />;
   }
   
-  // 4. Check role-based permission - ensuring requiredRole is of type Role
-  if (!checkPermission(requiredRole as 'ADMIN' | 'DEVELOPER' | 'VIEWER')) {
+  // 4. Check role-based permission
+  if (requiredRole && !checkPermission(requiredRole)) {
     console.log(`Access denied: User role ${user?.role} doesn't meet required role ${requiredRole}`);
     return <Navigate to="/unauthorized" replace />;
   }
