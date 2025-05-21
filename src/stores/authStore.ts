@@ -1,6 +1,6 @@
 
 import { create } from 'zustand';
-import { AuthState, User } from '@/types/index';
+import { AuthState, User, Role } from '@/types/index';
 import { apiClient } from '@/services/api.client';
 import { API_CONFIG } from '@/config/api.config';
 import { toast } from "sonner";
@@ -41,7 +41,7 @@ export const PERMISSIONS = {
 interface AuthStore extends AuthState {
   login: (username: string, password: string) => Promise<void>;
   logout: () => void;
-  checkPermission: (requiredRole: 'ADMIN' | 'DEVELOPER' | 'VIEWER') => boolean;
+  checkPermission: (requiredRole: Role) => boolean;
   hasPermission: (permission: string) => boolean;
 }
 
@@ -146,7 +146,7 @@ const useAuthStore = create<AuthStore>((set, get) => ({
     toast.info('Logged out successfully');
   },
   
-  checkPermission: (requiredRole: 'ADMIN' | 'DEVELOPER' | 'VIEWER') => {
+  checkPermission: (requiredRole: Role) => {
     const { user } = get();
     if (!user) return false;
     
@@ -158,9 +158,9 @@ const useAuthStore = create<AuthStore>((set, get) => ({
       case 'ADMIN':
         return user.role === 'ADMIN';
       case 'DEVELOPER':
-        return user.role === 'ADMIN' || user.role === 'DEVELOPER';
+        return ['ADMIN', 'DEVELOPER'].includes(user.role);
       case 'VIEWER':
-        return user.role === 'ADMIN' || user.role === 'DEVELOPER' || user.role === 'VIEWER';
+        return ['ADMIN', 'DEVELOPER', 'VIEWER'].includes(user.role);
       default:
         return false;
     }

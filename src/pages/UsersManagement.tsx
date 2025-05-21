@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { userService } from '@/services/userService';
@@ -260,7 +259,7 @@ const UsersManagement = () => {
   };
   
   const canCreate = hasPermission(PERMISSIONS.USER_CREATE);
-  const canEdit = hasPermission(PERMISSIONS.USER_EDIT);
+  const canEdit = hasPermission(PERMISSIONS.USER_UPDATE);
   const canDelete = hasPermission(PERMISSIONS.USER_DELETE);
 
   return (

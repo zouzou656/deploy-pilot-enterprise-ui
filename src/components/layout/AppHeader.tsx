@@ -5,7 +5,7 @@ import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { CommandIcon, LogOut, Settings, User, Search } from 'lucide-react';
+import { CommandIcon, LogOut, Settings, User } from 'lucide-react';
 import useAuthStore from '@/stores/authStore';
 import useThemeStore from '@/stores/themeStore';
 import ProjectSelector from '../project/ProjectSelector';
@@ -18,10 +18,11 @@ const AppHeader: React.FC<AppHeaderProps> = ({ onCommandPalette }) => {
   const { user, logout } = useAuthStore();
   const { theme, toggleDarkMode } = useThemeStore();
 
-  const userInitials = user ?
-      `${user.firstName?.charAt(0) || ''}${user.lastName?.charAt(0) || ''}`.toUpperCase() ||
-      user.username.substring(0, 2).toUpperCase() :
-      '';
+  // Safely calculate user initials, handling undefined values
+  const userInitials = user ? (
+    `${user.firstName?.charAt(0) || ''}${user.lastName?.charAt(0) || ''}`.toUpperCase() ||
+    (user.username ? user.username.substring(0, 2).toUpperCase() : 'UN')
+  ) : 'UN';
 
   return (
       <header className="sticky top-0 z-30 bg-background border-b flex h-16 items-center px-4 lg:px-6">
@@ -40,7 +41,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({ onCommandPalette }) => {
           <span className="font-bold text-xl">{theme.companyName || 'OSB DevOps'}</span>
         </div>
 
-        {/* Project Selector - Added */}
+        {/* Project Selector */}
         <div className="ml-8">
           <ProjectSelector />
         </div>
@@ -71,7 +72,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({ onCommandPalette }) => {
               <Button variant="ghost" size="icon" className="rounded-full">
                 <Avatar>
                   {user?.avatarUrl ? (
-                      <AvatarImage src={user.avatarUrl} alt={user.username} />
+                      <AvatarImage src={user.avatarUrl} alt={user.username || 'User'} />
                   ) : null}
                   <AvatarFallback>{userInitials}</AvatarFallback>
                 </Avatar>
@@ -82,9 +83,11 @@ const AppHeader: React.FC<AppHeaderProps> = ({ onCommandPalette }) => {
                 <div className="flex flex-col space-y-1">
                   <p className="text-sm font-medium leading-none">{user?.firstName} {user?.lastName}</p>
                   <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
-                  <div className="mt-1 rounded-md bg-secondary px-1.5 py-0.5 text-xs text-secondary-foreground">
-                    {user?.role}
-                  </div>
+                  {user?.role && (
+                    <div className="mt-1 rounded-md bg-secondary px-1.5 py-0.5 text-xs text-secondary-foreground">
+                      {user.role}
+                    </div>
+                  )}
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { roleService } from '@/services/roleService';
@@ -266,7 +265,7 @@ const RolesManagement = () => {
   };
   
   const canCreate = hasPermission(PERMISSIONS.ROLE_CREATE);
-  const canEdit = hasPermission(PERMISSIONS.ROLE_EDIT);
+  const canEdit = hasPermission(PERMISSIONS.ROLE_UPDATE);
   const canDelete = hasPermission(PERMISSIONS.ROLE_DELETE);
 
   return (

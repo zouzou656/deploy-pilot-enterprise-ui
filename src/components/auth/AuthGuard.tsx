@@ -6,7 +6,7 @@ import { Role } from '@/types';
 
 interface AuthGuardProps {
   children: React.ReactNode;
-  requiredRole?: Role | string;
+  requiredRole?: Role;
   requiredPermission?: string;
   requiredPermissions?: string[]; // Multiple permissions support (AND logic)
   requireAnyPermission?: string[]; // Multiple permissions support (OR logic)
@@ -19,17 +19,10 @@ const AuthGuard: React.FC<AuthGuardProps> = ({
   requiredPermissions = [],
   requireAnyPermission = [],
 }) => {
-  const { isAuthenticated, user, loading, refreshUserToken, checkPermission, hasPermission } = useAuthStore();
+  const { isAuthenticated, user, loading, checkPermission, hasPermission } = useAuthStore();
   const location = useLocation();
 
-  useEffect(() => {
-    // Attempt to refresh token if needed
-    if (!loading && !isAuthenticated) {
-      refreshUserToken().catch(err => {
-        console.error('Failed to refresh token:', err);
-      });
-    }
-  }, [refreshUserToken, isAuthenticated, loading]);
+  // Note: Removed refreshUserToken as it doesn't exist in the store
 
   if (loading) {
     return (
@@ -73,8 +66,8 @@ const AuthGuard: React.FC<AuthGuardProps> = ({
     return <Navigate to="/unauthorized" replace />;
   }
   
-  // 4. Check role-based permission
-  if (!checkPermission(requiredRole)) {
+  // 4. Check role-based permission - ensuring requiredRole is of type Role
+  if (!checkPermission(requiredRole as 'ADMIN' | 'DEVELOPER' | 'VIEWER')) {
     console.log(`Access denied: User role ${user?.role} doesn't meet required role ${requiredRole}`);
     return <Navigate to="/unauthorized" replace />;
   }
