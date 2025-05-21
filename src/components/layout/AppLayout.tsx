@@ -7,16 +7,31 @@ import AppHeader from './AppHeader';
 import CommandPalette from '../ui-custom/CommandPalette';
 import useThemeStore from '@/stores/themeStore';
 import useAuthStore from '@/stores/authStore';
+import { useProject } from '@/contexts/ProjectContext';
 
 interface AppLayoutProps {
   children: React.ReactNode;
+  requiredRole?: 'ADMIN' | 'DEVELOPER' | 'VIEWER';
+  requiredPermission?: string;
 }
 
-const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
+const AppLayout: React.FC<AppLayoutProps> = ({ 
+  children,
+  requiredRole,
+  requiredPermission
+}) => {
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const location = useLocation();
   const { theme } = useThemeStore();
-  const { user } = useAuthStore();
+  const { user, checkPermission, hasPermission } = useAuthStore();
+  const { fetchProjects } = useProject();
+
+  useEffect(() => {
+    // Refresh projects when layout mounts or user changes
+    if (user) {
+      fetchProjects();
+    }
+  }, [user, fetchProjects]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -40,6 +55,33 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
     // Close command palette when route changes
     setShowCommandPalette(false);
   }, [location.pathname]);
+
+  // Permission check if required
+  if (requiredRole && !checkPermission(requiredRole)) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-2">Access Denied</h1>
+          <p className="text-muted-foreground mb-4">
+            You need {requiredRole} role to access this page.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (requiredPermission && !hasPermission(requiredPermission)) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-2">Access Denied</h1>
+          <p className="text-muted-foreground mb-4">
+            You need {requiredPermission} permission to access this page.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <SidebarProvider>

@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -5,6 +6,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useEffect } from "react";
 import { Helmet } from "react-helmet";
+
+// Contexts
+import { ProjectProvider } from "./contexts/ProjectContext";
 
 // Pages
 import Login from "./pages/Login";
@@ -65,151 +69,146 @@ const App = () => {
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          {/* Wrap authenticated routes in ProjectProvider */}
           <Routes>
-            {/* Public routes */}
+            {/* Public routes (no project context needed) */}
             <Route path="/login" element={<Login />} />
             <Route path="/unauthorized" element={<Unauthorized />} />
             <Route path="/" element={<Index />} />
 
-            {/* Protected routes */}
+            {/* Protected routes with Project Context */}
             <Route
-              path="/dashboard"
+              path="/*"
               element={
                 <AuthGuard>
-                  <AppLayout>
-                    <Dashboard />
-                  </AppLayout>
+                  <ProjectProvider>
+                    <Routes>
+                      <Route
+                        path="dashboard"
+                        element={
+                          <AppLayout>
+                            <Dashboard />
+                          </AppLayout>
+                        }
+                      />
+
+                      <Route
+                        path="projects"
+                        element={
+                          <AppLayout>
+                            <ProjectManagement />
+                          </AppLayout>
+                        }
+                      />
+
+                      <Route
+                        path="git"
+                        element={
+                          <AppLayout>
+                            <GitManagement />
+                          </AppLayout>
+                        }
+                      />
+                      
+                      <Route
+                        path="api-explorer"
+                        element={
+                          <AppLayout>
+                            <ApiExplorer />
+                          </AppLayout>
+                        }
+                      />
+
+                      <Route
+                        path="settings-file"
+                        element={
+                          <AppLayout>
+                            <SettingsFile />
+                          </AppLayout>
+                        }
+                      />
+
+                      <Route
+                        path="jar-generation"
+                        element={
+                          <AppLayout>
+                            <JarGeneration />
+                          </AppLayout>
+                        }
+                      />
+
+                      <Route
+                        path="jar-viewer/:jarName"
+                        element={
+                          <AppLayout>
+                            <JarViewer />
+                          </AppLayout>
+                        }
+                      />
+
+                      <Route
+                        path="weblogic-deployment"
+                        element={
+                          <AppLayout>
+                            <WeblogicDeployment />
+                          </AppLayout>
+                        }
+                      />
+
+                      <Route
+                        path="logs"
+                        element={
+                          <AppLayout>
+                            <LogsHistory />
+                          </AppLayout>
+                        }
+                      />
+
+                      <Route
+                        path="code-explorer"
+                        element={
+                          <AppLayout>
+                            <CodeExplorer />
+                          </AppLayout>
+                        }
+                      />
+
+                      <Route
+                        path="settings"
+                        element={
+                          <AppLayout requiredRole="ADMIN">
+                            <Settings />
+                          </AppLayout>
+                        }
+                      />
+                      
+                      <Route
+                        path="users"
+                        element={
+                          <AppLayout requiredPermission={PERMISSIONS.USER_VIEW}>
+                            <UsersManagement />
+                          </AppLayout>
+                        }
+                      />
+
+                      <Route
+                        path="roles"
+                        element={
+                          <AppLayout requiredPermission={PERMISSIONS.ROLE_VIEW}>
+                            <RolesManagement />
+                          </AppLayout>
+                        }
+                      />
+
+                      {/* 404 route if no protected route matches */}
+                      <Route path="*" element={<NotFound />} />
+                    </Routes>
+                  </ProjectProvider>
                 </AuthGuard>
               }
             />
 
-            {/* Project Management Route */}
-            <Route
-              path="/projects"
-              element={
-                <AuthGuard requiredPermission={PERMISSIONS.USER_VIEW}>
-                  <AppLayout>
-                    <ProjectManagement />
-                  </AppLayout>
-                </AuthGuard>
-              }
-            />
-
-            <Route
-              path="/git"
-              element={
-                <AuthGuard>
-                  <AppLayout>
-                    <GitManagement />
-                  </AppLayout>
-                </AuthGuard>
-              }
-            />
-            
-            <Route
-              path="/api-explorer"
-              element={
-                <AuthGuard requiredPermission="user:view">
-                  <AppLayout>
-                    <ApiExplorer />
-                  </AppLayout>
-                </AuthGuard>
-              }
-            />
-            <Route
-              path="/settings-file"
-              element={
-                <AuthGuard>
-                  <AppLayout>
-                    <SettingsFile />
-                  </AppLayout>
-                </AuthGuard>
-              }
-            />
-            <Route
-              path="/jar-generation"
-              element={
-                <AuthGuard>
-                  <AppLayout>
-                    <JarGeneration />
-                  </AppLayout>
-                </AuthGuard>
-              }
-            />
-            <Route
-              path="/jar-viewer/:jarName"
-              element={
-                <AuthGuard>
-                  <AppLayout>
-                    <JarViewer />
-                  </AppLayout>
-                </AuthGuard>
-              }
-            />
-            <Route
-              path="/weblogic-deployment"
-              element={
-                <AuthGuard>
-                  <AppLayout>
-                    <WeblogicDeployment />
-                  </AppLayout>
-                </AuthGuard>
-              }
-            />
-            <Route
-              path="/logs"
-              element={
-                <AuthGuard>
-                  <AppLayout>
-                    <LogsHistory />
-                  </AppLayout>
-                </AuthGuard>
-              }
-            />
-            <Route
-              path="/code-explorer"
-              element={
-                <AuthGuard>
-                  <AppLayout>
-                    <CodeExplorer />
-                  </AppLayout>
-                </AuthGuard>
-              }
-            />
-            <Route
-              path="/settings"
-              element={
-                <AuthGuard requiredRole="ADMIN">
-                  <AppLayout>
-                    <Settings />
-                  </AppLayout>
-                </AuthGuard>
-              }
-            />
-            
-            {/* RBAC Management Routes */}
-            <Route
-              path="/users"
-              element={
-                <AuthGuard requiredPermission={PERMISSIONS.USER_VIEW}>
-                  <AppLayout>
-                    <UsersManagement />
-                  </AppLayout>
-                </AuthGuard>
-              }
-            />
-            <Route
-              path="/roles"
-              element={
-                <AuthGuard requiredPermission={PERMISSIONS.ROLE_VIEW}>
-                  <AppLayout>
-                    <RolesManagement />
-                  </AppLayout>
-                </AuthGuard>
-              }
-            />
-
-            {/* 404 route */}
+            {/* 404 route for root level */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

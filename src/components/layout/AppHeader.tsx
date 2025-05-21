@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { CommandIcon, LogOut, Settings, User, Search } from 'lucide-react';
 import useAuthStore from '@/stores/authStore';
 import useThemeStore from '@/stores/themeStore';
+import ProjectSelector from '../project/ProjectSelector';
 
 interface AppHeaderProps {
   onCommandPalette: () => void;
@@ -37,6 +38,11 @@ const AppHeader: React.FC<AppHeaderProps> = ({ onCommandPalette }) => {
               }}
           />
           <span className="font-bold text-xl">{theme.companyName || 'OSB DevOps'}</span>
+        </div>
+
+        {/* Project Selector - Added */}
+        <div className="ml-8">
+          <ProjectSelector />
         </div>
 
         <div className="ml-auto flex items-center gap-4">
