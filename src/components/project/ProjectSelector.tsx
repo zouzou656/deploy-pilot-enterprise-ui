@@ -9,6 +9,8 @@ import {
 } from "@/components/ui/select";
 import { useProject } from '@/contexts/ProjectContext';
 import { Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Link } from 'react-router-dom';
 
 const ProjectSelector: React.FC = () => {
   const { projects, selectedProject, selectProject, loading } = useProject();
@@ -28,8 +30,15 @@ const ProjectSelector: React.FC = () => {
 
   if (projects.length === 0) {
     return (
-      <div className="text-sm text-muted-foreground">
-        No projects available
+      <div className="flex items-center gap-2">
+        <div className="text-sm text-muted-foreground">
+          No projects available
+        </div>
+        <Link to="/projects">
+          <Button variant="link" size="sm" className="text-primary">
+            Create a project
+          </Button>
+        </Link>
       </div>
     );
   }

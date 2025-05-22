@@ -1,3 +1,4 @@
+
 import React, {
   createContext,
   useContext,
@@ -8,9 +9,9 @@ import React, {
 } from 'react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
-import { createApiUrl, API_CONFIG } from '@/config/api.config';
 import useAuthStore from '@/stores/authStore';
 import { Project } from '@/types/project';
+import { projectService } from '@/services/projectService';
 
 interface ProjectContextType {
   projects: Project[];
@@ -34,36 +35,27 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     refreshToken,
     isAuthenticated,
     loading: authLoading,
+    user,
     refreshTokens
   } = useAuthStore();
   const navigate = useNavigate();
 
   // Memoized fetchProjects
   const fetchProjects = useCallback(async () => {
-    if (!token) return;
+    if (!token || !user?.id) return;
+    
     setLoading(true);
     setError(null);
 
     try {
-      const res = await fetch(
-          createApiUrl(API_CONFIG.ENDPOINTS.PROJECTS.USER_PROJECTS),
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            }
-          }
-      );
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data: Project[] = await res.json();
+      // Get projects for the current user
+      const data = await projectService.getUserProjects(user.id);
       setProjects(data);
 
       // restore or pick selectedProject
       const savedId = localStorage.getItem('selectedProjectId');
-      const pick =
-          data.find(p => p.id === savedId) ||
-          data[0] ||
-          null;
+      const pick = data.find(p => p.id === savedId) || data[0] || null;
+      
       setSelectedProject(pick);
       if (pick) localStorage.setItem('selectedProjectId', pick.id);
     } catch (err) {
@@ -74,18 +66,18 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, user?.id]);
 
   // Run once when auth state resolves (login or silent refresh)
   useEffect(() => {
-    if (isAuthenticated && token) {
+    if (isAuthenticated && token && user?.id) {
       fetchProjects();
     } else if (!token && refreshToken && !authLoading) {
       refreshTokens().catch(err => {
         console.error('Silent token refresh failed', err);
       });
     }
-  }, [isAuthenticated, token, refreshToken, authLoading, fetchProjects, refreshTokens]);
+  }, [isAuthenticated, token, refreshToken, authLoading, fetchProjects, refreshTokens, user?.id]);
 
   const selectProject = (projectId: string) => {
     const p = projects.find(x => x.id === projectId);

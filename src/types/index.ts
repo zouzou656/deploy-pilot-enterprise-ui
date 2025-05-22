@@ -78,6 +78,19 @@ export interface GitDiff {
   modified: string[];
 }
 
+export interface GitCompareRequest {
+  projectId: string;
+  baseSha: string;
+  headSha: string;
+  files?: string[];
+}
+
+export interface FileChange {
+  filename: string;
+  status: 'added' | 'modified' | 'removed' | 'renamed' | 'unmodified';
+  patch?: string;
+}
+
 // Configuration related
 export interface ProjectSettings {
   id: string;

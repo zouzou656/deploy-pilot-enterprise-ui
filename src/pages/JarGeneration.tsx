@@ -18,25 +18,21 @@ import { FileEntry } from '@/components/jar-generation/FileTree';
 import useProjectStore from '@/stores/projectStore';
 import useAuthStore from '@/stores/authStore';
 import { Project, ProjectEnvironment, FileOverride } from '@/types/project';
+import { useProject } from '@/contexts/ProjectContext';
+import { gitService } from '@/services/gitService';
 
 export default function JarGeneration() {
-  const API = 'http://localhost:5020/api';  // API base URL
-
   const { toast } = useToast();
   const navigate = useNavigate();
   const { user } = useAuthStore();
+  const { selectedProject } = useProject();
   const { 
-    projects, 
     environments,
-    fetchProjects, 
-    fetchUserProjects, 
     fetchEnvironments, 
-    fetchFileOverrides 
+    fetchFileOverrides
   } = useProjectStore();
 
   // UI state
-  const [userProjects, setUserProjects] = useState<Project[]>([]);
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [projectEnvironments, setProjectEnvironments] = useState<ProjectEnvironment[]>([]);
   const [selectedEnvironment, setSelectedEnvironment] = useState<ProjectEnvironment | null>(null);
   const [fileOverrides, setFileOverrides] = useState<FileOverride[]>([]);
@@ -57,26 +53,7 @@ export default function JarGeneration() {
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
   const [highlighted, setHighlighted] = useState<FileEntry | null>(null);
 
-  // Load projects for the current user
-  useEffect(() => {
-    const loadUserProjects = async () => {
-      if (user) {
-        try {
-          const projects = await fetchUserProjects(user.id);
-          setUserProjects(projects);
-        } catch (error) {
-          console.error("Failed to load user projects:", error);
-          toast({ 
-            title: "Failed to load projects", 
-            description: "Please try again or contact support.",
-            variant: "destructive" 
-          });
-        }
-      }
-    };
-    
-    loadUserProjects();
-  }, [user, fetchUserProjects, toast]);
+  const API = 'http://localhost:5020/api';
 
   // Load environments when project changes
   useEffect(() => {
@@ -118,27 +95,34 @@ export default function JarGeneration() {
   const { data: branches = [], isLoading: loadingBranches } = useQuery({
     queryKey: ['branches', selectedProject?.id],
     enabled: !!selectedProject?.id,
-    queryFn: () =>
-        fetch(`${API}/git/branches?projectId=${selectedProject!.id}`)
-            .then(r => r.json() as Promise<string[]>),
+    queryFn: async () => {
+      if (!selectedProject?.id) return [];
+      return await gitService.getBranches(selectedProject.id);
+    }
   });
 
   // 2) Commits list
   const { data: commits = [], isLoading: loadingCommits } = useQuery({
     queryKey: ['commits', selectedProject?.id, branch],
     enabled: !!selectedProject?.id && !!branch,
-    queryFn: () =>
-        fetch(`${API}/git/commits?projectId=${selectedProject!.id}&branch=${encodeURIComponent(branch)}`)
-            .then(r => r.json() as Promise<{ sha: string; message: string }[]>),
+    queryFn: async () => {
+      if (!selectedProject?.id || !branch) return [];
+      const commitData = await gitService.getCommits(selectedProject.id, branch);
+      return commitData.map(c => ({ 
+        sha: c.sha, 
+        message: c.message 
+      }));
+    }
   });
 
   // 3) Manual‐mode file list
   const { data: allFiles = [] } = useQuery({
     queryKey: ['allFiles', selectedProject?.id, branch],
     enabled: !!selectedProject?.id && !!branch && strategy === 'manual',
-    queryFn: () =>
-        fetch(`${API}/git/tree?projectId=${selectedProject!.id}&branch=${encodeURIComponent(branch)}`)
-            .then(r => r.json() as Promise<string[]>),
+    queryFn: async () => {
+      if (!selectedProject?.id || !branch) return [];
+      return await gitService.getTree(selectedProject.id, branch);
+    }
   });
   
   // Map files for manual mode
@@ -171,9 +155,16 @@ export default function JarGeneration() {
   const { data: fullCmp, isFetching: loadingFull } = useQuery({
     queryKey: ['full', selectedProject?.id, branch, strategy],
     enabled: strategy === 'full' && !!selectedProject?.id && !!branch && !!initialBase && !!initialHead,
-    queryFn: () =>
-        fetch(`${API}/git/full?projectId=${selectedProject!.id}&branch=${encodeURIComponent(branch)}`)
-            .then(r => { if (!r.ok) throw new Error(); return r.json() as Promise<{ files: FileEntry[] }>; }),
+    queryFn: async () => {
+      if (!selectedProject?.id || !branch) 
+        throw new Error('Project or branch not selected');
+      
+      const data = await gitService.getFull(selectedProject.id, branch);
+      return { files: data.files.map(f => ({ 
+        filename: f.filename, 
+        status: f.status 
+      }))};
+    }
   });
 
   // 6) Single‐commit compare fetch
@@ -184,9 +175,16 @@ export default function JarGeneration() {
         !!selectedProject?.id &&
         !!initialBase &&
         !!initialHead,
-    queryFn: () =>
-        fetch(`${API}/git/compare?projectId=${selectedProject!.id}&baseSha=${initialBase}&headSha=${initialHead}`)
-            .then(r => { if (!r.ok) throw new Error(); return r.json() as Promise<{ files: FileEntry[] }>; }),
+    queryFn: async () => {
+      if (!selectedProject?.id || !initialBase || !initialHead) 
+        throw new Error('Project or commits not selected');
+      
+      const data = await gitService.compare(selectedProject.id, initialBase, initialHead);
+      return { files: data.files.map(f => ({ 
+        filename: f.filename, 
+        status: f.status 
+      }))};
+    }
   });
 
   // 7) Preview (post‐filter) compare‐files
@@ -198,17 +196,22 @@ export default function JarGeneration() {
         !!previewBase &&
         !!initialHead &&
         selectedFiles.length > 0,
-    queryFn: () =>
-        fetch(`${API}/git/compare-files`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            projectId: selectedProject!.id, 
-            baseSha: previewBase, 
-            headSha: initialHead, 
-            files: selectedFiles 
-          }),
-        }).then(r => { if (!r.ok) throw new Error(); return r.json() as Promise<{ files: FileEntry[] }>; }),
+    queryFn: async () => {
+      if (!selectedProject?.id || !previewBase || !initialHead || !selectedFiles.length) 
+        throw new Error('Project, commits, or files not selected');
+      
+      const data = await gitService.compareFiles({
+        projectId: selectedProject.id,
+        baseSha: previewBase,
+        headSha: initialHead,
+        files: selectedFiles
+      });
+      
+      return { files: data.files.map(f => ({ 
+        filename: f.filename, 
+        status: f.status 
+      }))};
+    }
   });
 
   // 8) Choose the right initialFiles
@@ -273,7 +276,7 @@ export default function JarGeneration() {
     console.log("JAR Generation Payload:", payload);
     
     try {
-      const r = await fetch('/api/jar/generate', { 
+      const r = await fetch(`${API}/jar/generate`, { 
         method: 'POST', 
         headers: {'Content-Type': 'application/json'}, 
         body: JSON.stringify(payload) 
@@ -287,21 +290,6 @@ export default function JarGeneration() {
     } catch {
       toast({ title: 'Generation failed', description: 'Please try again.', variant: 'destructive' });
     }
-  };
-
-  // Reset on project change
-  const handleProjectChange = (project: Project | null) => {
-    setSelectedProject(project);
-    setSelectedEnvironment(null);
-    setCurrentStep('config');
-    setBranch(''); 
-    setStrategy('manual'); 
-    setSelectedCommit('');
-    setInitialBase(''); 
-    setInitialHead(''); 
-    setPreviewBase('');
-    setSelectedFiles([]); 
-    setHighlighted(null);
   };
 
   const handleEnvironmentChange = (env: ProjectEnvironment | null) => {
@@ -339,9 +327,9 @@ export default function JarGeneration() {
                   strategy={strategy} setStrategy={handleStrategySelection}
                   selectedCommit={selectedCommit} setSelectedCommit={setSelectedCommit}
                   loadingBranches={loadingBranches} loadingCommits={loadingCommits}
-                  projects={userProjects}
+                  projects={[]}
                   selectedProject={selectedProject}
-                  setSelectedProject={handleProjectChange}
+                  setSelectedProject={()=>{}} // We're using the global project selector now
                   environments={projectEnvironments}
                   selectedEnvironment={selectedEnvironment}
                   setSelectedEnvironment={handleEnvironmentChange}

@@ -45,6 +45,17 @@ export const API_CONFIG = {
       UPDATE: '/api/auth/permissions/:id',
       DELETE: '/api/auth/permissions/:id',
     },
+    // Git operations
+    GIT: {
+      BRANCHES: '/api/git/branches',
+      COMMITS: '/api/git/commits',
+      COMMIT: '/api/git/commit',
+      COMPARE: '/api/git/compare',
+      FULL: '/api/git/full',
+      TREE: '/api/git/tree',
+      COMPARE_FILES: '/api/git/compare-files',
+      FILE_CONTENT: '/api/git/file-content',
+    },
     // Project management
     PROJECTS: {
       LIST: '/api/projects',
