@@ -1,61 +1,82 @@
 
-// RBAC Types
-export interface UserListItem {
-  id: string;
-  email: string;
-  roleIds: string[]; // Changed from roleId to roleIds for multiple roles
-  lastLogin: string | null;
-  status: 'active' | 'inactive' | 'pending';
-}
-
-export interface UserDetails extends UserListItem {
-  firstName?: string;
-  lastName?: string;
-  permissions?: string[]; // Direct permissions not tied to roles
-}
-
-export interface CreateUserPayload {
-  email: string;
-  password: string;
-  roleIds: string[]; // Changed from roleId to roleIds
-  firstName?: string;
-  lastName?: string;
-  permissions?: string[]; // Optional direct permissions
-  status?: 'active' | 'inactive' | 'pending';
-}
-
-export interface UpdateUserPayload {
-  email?: string;
-  password?: string; // Only if changing password
-  roleIds?: string[]; // Changed from roleId to roleIds
-  firstName?: string;
-  lastName?: string;
-  permissions?: string[]; // Optional direct permissions
-  status?: 'active' | 'inactive' | 'pending';
-}
+// Define types for RBAC entities and DTOs
 
 export interface Permission {
   id: string;
   name: string;
   description: string;
-  group: string; // Permissions are grouped (e.g. "Users", "Roles", etc.)
+  groupName: string;
+  createdAt: Date;
 }
 
 export interface Role {
   id: string;
   name: string;
-  permissions: string[]; // List of permission IDs
-  description?: string;
+  description: string;
 }
 
-export interface CreateRolePayload {
+export interface RoleDetail extends Role {
+  createdAt: Date;
+  updatedAt: Date;
+  permissions?: Permission[];
+}
+
+export interface UserListItem {
+  id: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  role?: string;
+  status?: string;
+  lastLogin?: Date;
+}
+
+export interface UserDetail extends UserListItem {
+  username?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  permissions?: Permission[];
+  roles?: Role[];
+}
+
+// DTOs for API requests
+export interface CreateUserDto {
+  email: string;
+  password: string;
+  username?: string;
+  firstName?: string;
+  lastName?: string;
+  role?: string;
+  status?: string;
+}
+
+export interface UpdateUserDto {
+  password?: string;
+  username?: string;
+  firstName?: string;
+  lastName?: string;
+  role?: string;
+  status?: string;
+}
+
+export interface CreateRoleDto {
   name: string;
-  permissions: string[];
   description?: string;
 }
 
-export interface UpdateRolePayload {
+export interface UpdateRoleDto {
   name?: string;
-  permissions?: string[];
   description?: string;
+}
+
+export interface CreatePermissionDto {
+  name: string;
+  description?: string;
+  groupName?: string;
+}
+
+export interface UpdatePermissionDto {
+  name?: string;
+  description?: string;
+  groupName?: string;
 }

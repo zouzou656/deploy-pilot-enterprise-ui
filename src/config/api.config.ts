@@ -1,109 +1,100 @@
 
-/**
- * API Configuration
- * Central place for all API-related configuration
- */
+// API Configuration
 
+// Base API URL
+export const API_BASE_URL = 'http://localhost:5020';
+
+// API Endpoints
 export const API_CONFIG = {
-  BASE_URL: 'http://localhost:5020',
   ENDPOINTS: {
-    // Auth endpoints
     AUTH: {
       LOGIN: '/api/auth/login',
-      REFRESH: '/api/auth/refresh',
+      REGISTER: '/api/auth/register',
       LOGOUT: '/api/auth/logout',
+      REFRESH: '/api/auth/refresh',
+      VERIFY: '/api/auth/verify',
+      RESET_PASSWORD: '/api/auth/reset-password',
+      FORGOT_PASSWORD: '/api/auth/forgot-password',
     },
-    // User management
     USERS: {
       LIST: '/api/auth/users',
-      GET: '/api/auth/users/:id',
+      GET: '/api/auth/users/{id}',
       CREATE: '/api/auth/users',
-      UPDATE: '/api/auth/users/:id',
-      DELETE: '/api/auth/users/:id',
-      ASSIGN_ROLE: '/api/auth/users/:id/roles/:roleId',
-      REMOVE_ROLE: '/api/auth/users/:id/roles/:roleId',
-      USER_PERMISSIONS: '/api/auth/permissions/user/:userId',
-      ADD_PERMISSION: '/api/auth/permissions/user/:userId/:permId',
-      REMOVE_PERMISSION: '/api/auth/permissions/user/:userId/:permId',
+      UPDATE: '/api/auth/users/{id}',
+      DELETE: '/api/auth/users/{id}',
+      ASSIGN_ROLE: '/api/auth/users/{id}/roles/{roleId}',
+      REMOVE_ROLE: '/api/auth/users/{id}/roles/{roleId}',
     },
-    // Role management
     ROLES: {
       LIST: '/api/auth/roles',
-      GET: '/api/auth/roles/:id',
+      GET: '/api/auth/roles/{id}',
       CREATE: '/api/auth/roles',
-      UPDATE: '/api/auth/roles/:id',
-      DELETE: '/api/auth/roles/:id',
-      ROLE_PERMISSIONS: '/api/auth/permissions/role/:roleId',
-      ADD_PERMISSION: '/api/auth/permissions/role/:roleId/:permId',
-      REMOVE_PERMISSION: '/api/auth/permissions/role/:roleId/:permId',
+      UPDATE: '/api/auth/roles/{id}',
+      DELETE: '/api/auth/roles/{id}',
     },
-    // Permission management
     PERMISSIONS: {
       LIST: '/api/auth/permissions',
-      GET: '/api/auth/permissions/:id',
+      GET: '/api/auth/permissions/{id}',
       CREATE: '/api/auth/permissions',
-      UPDATE: '/api/auth/permissions/:id',
-      DELETE: '/api/auth/permissions/:id',
+      UPDATE: '/api/auth/permissions/{id}',
+      DELETE: '/api/auth/permissions/{id}',
+      GET_BY_ROLE: '/api/auth/permissions/role/{roleId}',
+      ASSIGN_TO_ROLE: '/api/auth/permissions/role/{roleId}/{permId}',
+      REMOVE_FROM_ROLE: '/api/auth/permissions/role/{roleId}/{permId}',
+      GET_BY_USER: '/api/auth/permissions/user/{userId}',
+      ASSIGN_TO_USER: '/api/auth/permissions/user/{userId}/{permId}',
+      REMOVE_FROM_USER: '/api/auth/permissions/user/{userId}/{permId}',
     },
-    // Git operations
+    PROJECTS: {
+      LIST: '/api/projects',
+      GET: '/api/projects/{id}',
+      CREATE: '/api/projects',
+      UPDATE: '/api/projects/{id}',
+      DELETE: '/api/projects/{id}',
+      USER_PROJECTS: '/api/projects/user/{userId}',
+      ASSIGN_USER: '/api/projects/{projectId}/users/{userId}',
+      REMOVE_USER: '/api/projects/{projectId}/users/{userId}',
+    },
     GIT: {
       BRANCHES: '/api/git/branches',
       COMMITS: '/api/git/commits',
-      COMMIT: '/api/git/commit',
+      COMMIT_DETAIL: '/api/git/commit/{sha}',
       COMPARE: '/api/git/compare',
-      FULL: '/api/git/full',
+      FULL_TREE: '/api/git/full',
       TREE: '/api/git/tree',
       COMPARE_FILES: '/api/git/compare-files',
       FILE_CONTENT: '/api/git/file-content',
     },
-    // Project management
-    PROJECTS: {
-      LIST: '/api/projects',
-      GET: '/api/projects/:id',
-      CREATE: '/api/projects',
-      UPDATE: '/api/projects/:id',
-      DELETE: '/api/projects/:id',
-      USER_PROJECTS: '/api/projects/user/:userId',
-      ASSIGN_USER: '/api/projects/:projectId/users/:userId',
-      REMOVE_USER: '/api/projects/:projectId/users/:userId',
+    CONFIG: {
+      FILES: '/api/config/files',
     },
-    // Environment management
-    ENVIRONMENTS: {
-      LIST: '/api/projects/:projectId/environments',
-      GET: '/api/environments/:id',
-      CREATE: '/api/projects/:projectId/environments',
-      UPDATE: '/api/environments/:id',
-      DELETE: '/api/environments/:id',
-    },
-    // File overrides
-    OVERRIDES: {
-      LIST: '/api/environments/:environmentId/overrides',
-      GET: '/api/overrides/:id',
-      CREATE: '/api/environments/:environmentId/overrides',
-      UPDATE: '/api/overrides/:id',
-      DELETE: '/api/overrides/:id',
-    },
-    // JAR generation
-    JAR: {
-      GENERATE: '/api/jar/generate',
-      STATUS: '/api/jar/:id/status',
-      LIST: '/api/jar',
-    }
   },
 };
 
 /**
- * Helper to create full API URLs
+ * Creates a full API URL with path parameters replaced
  */
-export const createApiUrl = (endpoint: string, params?: Record<string, string>): string => {
-  let url = `${API_CONFIG.BASE_URL}${endpoint}`;
-  
+export function createApiUrl(
+  endpoint: string,
+  pathParams: Record<string, string> = {},
+  queryParams: Record<string, string> = {}
+): string {
   // Replace path parameters
-  if (params) {
-    Object.entries(params).forEach(([key, value]) => {
-      url = url.replace(`:${key}`, value);
-    });
+  let url = API_BASE_URL + endpoint;
+  Object.entries(pathParams).forEach(([key, value]) => {
+    url = url.replace(`{${key}}`, encodeURIComponent(value));
+  });
+
+  // Add query parameters
+  if (Object.keys(queryParams).length > 0) {
+    const queryString = Object.entries(queryParams)
+      .map(
+        ([key, value]) =>
+          `${encodeURIComponent(key)}=${encodeURIComponent(value)}`
+      )
+      .join('&');
+    url += `?${queryString}`;
   }
-  
+
   return url;
-};
+}

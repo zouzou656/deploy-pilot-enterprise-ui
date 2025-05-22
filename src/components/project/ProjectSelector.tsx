@@ -56,7 +56,7 @@ const ProjectSelector: React.FC = () => {
         </SelectTrigger>
         <SelectContent>
           {projects.map((project) => (
-            <SelectItem key={project.id} value={project.id}>
+            <SelectItem key={project.id} value={project.id || ''}>
               {project.name}
             </SelectItem>
           ))}

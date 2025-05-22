@@ -1,112 +1,101 @@
 
-import React, {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  useCallback,
-  ReactNode
-} from 'react';
-import { toast } from 'sonner';
-import { useNavigate } from 'react-router-dom';
-import useAuthStore from '@/stores/authStore';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Project } from '@/types/project';
 import { projectService } from '@/services/projectService';
+import useAuthStore from '@/stores/authStore';
+import { useToast } from '@/hooks/use-toast';
 
 interface ProjectContextType {
   projects: Project[];
-  selectedProject: Project | null;
   loading: boolean;
-  error: string | null;
+  error: Error | null;
+  selectedProject: Project | null;
   selectProject: (projectId: string) => void;
-  fetchProjects: () => Promise<void>;
+  refreshProjects: () => Promise<void>;
 }
 
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
 
-export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<Error | null>(null);
+  const { user } = useAuthStore();
+  const { toast } = useToast();
 
-  const {
-    token,
-    refreshToken,
-    isAuthenticated,
-    loading: authLoading,
-    user,
-    refreshTokens
-  } = useAuthStore();
-  const navigate = useNavigate();
+  // Load projects when component mounts or user changes
+  useEffect(() => {
+    if (user) {
+      loadProjects();
+    }
+  }, [user]);
 
-  // Memoized fetchProjects
-  const fetchProjects = useCallback(async () => {
-    if (!token || !user?.id) return;
-    
+  // Function to load projects from API
+  const loadProjects = async () => {
     setLoading(true);
     setError(null);
-
+    
     try {
-      // Get projects for the current user
-      const data = await projectService.getUserProjects(user.id);
-      setProjects(data);
-
-      // restore or pick selectedProject
-      const savedId = localStorage.getItem('selectedProjectId');
-      const pick = data.find(p => p.id === savedId) || data[0] || null;
+      // Load all projects (we can filter by user later if needed)
+      const fetchedProjects = await projectService.getProjects();
+      setProjects(fetchedProjects);
       
-      setSelectedProject(pick);
-      if (pick) localStorage.setItem('selectedProjectId', pick.id);
+      // Set selected project from localStorage or first project
+      const savedProjectId = localStorage.getItem('selectedProjectId');
+      
+      if (savedProjectId && fetchedProjects.some(p => p.id === savedProjectId)) {
+        const project = fetchedProjects.find(p => p.id === savedProjectId) || null;
+        setSelectedProject(project);
+      } else if (fetchedProjects.length > 0) {
+        setSelectedProject(fetchedProjects[0]);
+        localStorage.setItem('selectedProjectId', fetchedProjects[0].id as string);
+      }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Unknown error';
-      setError(msg);
-      toast.error('Failed to load projects');
-      console.error('Failed to load projects:', err);
+      console.error('Error loading projects:', err);
+      setError(err instanceof Error ? err : new Error('Failed to load projects'));
+      toast({
+        title: "Error loading projects",
+        description: err instanceof Error ? err.message : 'An unknown error occurred',
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
-  }, [token, user?.id]);
-
-  // Run once when auth state resolves (login or silent refresh)
-  useEffect(() => {
-    if (isAuthenticated && token && user?.id) {
-      fetchProjects();
-    } else if (!token && refreshToken && !authLoading) {
-      refreshTokens().catch(err => {
-        console.error('Silent token refresh failed', err);
-      });
-    }
-  }, [isAuthenticated, token, refreshToken, authLoading, fetchProjects, refreshTokens, user?.id]);
-
+  };
+  
+  const refreshProjects = async () => {
+    await loadProjects();
+  };
+  
+  // Function to select a project
   const selectProject = (projectId: string) => {
-    const p = projects.find(x => x.id === projectId);
-    if (p) {
-      setSelectedProject(p);
+    const project = projects.find(p => p.id === projectId) || null;
+    setSelectedProject(project);
+    if (project) {
       localStorage.setItem('selectedProjectId', projectId);
-      toast.success(`Switched to project: ${p.name}`);
     }
   };
 
   return (
-      <ProjectContext.Provider
-          value={{
-            projects,
-            selectedProject,
-            loading,
-            error,
-            selectProject,
-            fetchProjects
-          }}
-      >
-        {children}
-      </ProjectContext.Provider>
+    <ProjectContext.Provider
+      value={{
+        projects,
+        loading,
+        error,
+        selectedProject,
+        selectProject,
+        refreshProjects,
+      }}
+    >
+      {children}
+    </ProjectContext.Provider>
   );
 };
 
-export const useProject = (): ProjectContextType => {
+export const useProject = () => {
   const context = useContext(ProjectContext);
-  if (!context) {
+  if (context === undefined) {
     throw new Error('useProject must be used within a ProjectProvider');
   }
   return context;

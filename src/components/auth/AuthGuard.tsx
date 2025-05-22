@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import useAuthStore from '@/stores/authStore';
 import { Role } from '@/types';
@@ -19,7 +19,7 @@ const AuthGuard: React.FC<AuthGuardProps> = ({
   requiredPermissions = [],
   requireAnyPermission = [],
 }) => {
-  const { isAuthenticated, user, loading, checkPermission, hasPermission } = useAuthStore();
+  const { isAuthenticated, user, loading, hasPermission, checkPermission } = useAuthStore();
   const location = useLocation();
 
   if (loading) {
@@ -51,8 +51,8 @@ const AuthGuard: React.FC<AuthGuardProps> = ({
   
   // 2. Check for ANY required permission (more lenient)
   if (requireAnyPermission.length > 0) {
-    const hasAnyPermission = requireAnyPermission.some(perm => hasPermission(perm));
-    if (!hasAnyPermission) {
+    const hasAnyPerm = requireAnyPermission.some(perm => hasPermission(perm));
+    if (!hasAnyPerm) {
       console.log(`Access denied: User doesn't have any of the required permissions: ${requireAnyPermission.join(', ')}`);
       return <Navigate to="/unauthorized" replace />;
     }

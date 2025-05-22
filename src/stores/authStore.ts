@@ -1,13 +1,16 @@
+
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { jwtDecode } from 'jwt-decode';
 import { API_CONFIG, createApiUrl } from '@/config/api.config';
+import { Role } from '@/types';
 
 export interface User {
   id: string;
   email: string;
   firstName?: string;
   lastName?: string;
+  fullName?: string;
   role?: string;
   avatarUrl?: string;
   permissions?: string[];
@@ -27,12 +30,14 @@ export const PERMISSIONS = {
   USER_VIEW: 'user:view',
   USER_CREATE: 'user:create',
   USER_EDIT: 'user:edit',
+  USER_UPDATE: 'user:update',
   USER_DELETE: 'user:delete',
   
   // Role permissions
   ROLE_VIEW: 'role:view',
   ROLE_CREATE: 'role:create',
   ROLE_EDIT: 'role:edit',
+  ROLE_UPDATE: 'role:update',
   ROLE_DELETE: 'role:delete',
   
   // Permission management
@@ -68,6 +73,7 @@ interface AuthStore extends AuthState {
   hasPermission: (permission: string) => boolean;
   hasAnyPermission: (permissions: string[]) => boolean;
   hasRole: (role: string) => boolean;
+  checkPermission: (requiredRole: Role) => boolean;
 }
 
 const useAuthStore = create<AuthStore>()(
@@ -97,29 +103,17 @@ const useAuthStore = create<AuthStore>()(
           }
 
           const data = await response.json();
-          const { accessToken, refreshToken } = data;
+          
+          // Extract data directly from the response
+          const { token, refreshToken, user } = data;
+          
+          if (!token || typeof token !== 'string') {
+            throw new Error('Invalid token received from server');
+          }
 
-          // Decode JWT to get user info
-          const decodedToken = jwtDecode<{
-            sub: string;
-            email: string;
-            firstName?: string;
-            lastName?: string;
-            role?: string;
-            permissions?: string[];
-          }>(accessToken);
-
-          const user: User = {
-            id: decodedToken.sub,
-            email: decodedToken.email,
-            firstName: decodedToken.firstName,
-            lastName: decodedToken.lastName,
-            role: decodedToken.role,
-            permissions: decodedToken.permissions || [],
-          };
-
+          // No need to decode JWT - user data is provided directly
           set({
-            token: accessToken,
+            token,
             refreshToken,
             user,
             isAuthenticated: true,
@@ -127,6 +121,7 @@ const useAuthStore = create<AuthStore>()(
           });
           return true;
         } catch (error) {
+          console.error("Login error:", error);
           set({
             loading: false,
             error: error instanceof Error ? error.message : 'Unknown error',
@@ -143,6 +138,7 @@ const useAuthStore = create<AuthStore>()(
             headers: {
               Authorization: `Bearer ${get().token}`,
             },
+            body: JSON.stringify({ refreshToken: get().refreshToken }),
           }).catch(console.error); // Fire and forget
         }
 
@@ -173,29 +169,10 @@ const useAuthStore = create<AuthStore>()(
           }
 
           const data = await response.json();
-          const { accessToken, refreshToken } = data;
-
-          // Decode JWT to get user info
-          const decodedToken = jwtDecode<{
-            sub: string;
-            email: string;
-            firstName?: string;
-            lastName?: string;
-            role?: string;
-            permissions?: string[];
-          }>(accessToken);
-
-          const user: User = {
-            id: decodedToken.sub,
-            email: decodedToken.email,
-            firstName: decodedToken.firstName,
-            lastName: decodedToken.lastName,
-            role: decodedToken.role,
-            permissions: decodedToken.permissions || [],
-          };
+          const { token, refreshToken, user } = data;
 
           set({
-            token: accessToken,
+            token,
             refreshToken,
             user,
             isAuthenticated: true,
@@ -231,6 +208,23 @@ const useAuthStore = create<AuthStore>()(
         if (!user || !user.role) return false;
         return user.role === role;
       },
+      
+      checkPermission: (requiredRole: Role) => {
+        const { user } = get();
+        if (!user || !user.role) return false;
+        
+        const roles: Record<string, number> = {
+          ADMIN: 3,
+          DEVELOPER: 2,
+          MANAGER: 1,
+          VIEWER: 0
+        };
+        
+        const userRoleLevel = roles[user.role] ?? -1;
+        const requiredRoleLevel = roles[requiredRole] ?? -1;
+        
+        return userRoleLevel >= requiredRoleLevel;
+      }
     }),
     {
       name: 'auth-storage',

@@ -60,19 +60,19 @@ export const projectService = {
 
   async deleteProject(id: string): Promise<void> {
     const url = createApiUrl(API_CONFIG.ENDPOINTS.PROJECTS.DELETE, { id });
-    const { status, error } = await apiClient.delete<void>(url);
-    if (status < 200 || status >= 300) throw new Error(error || `Delete failed: ${status}`);
+    const { error } = await apiClient.delete(url);
+    if (error) throw new Error(error);
   },
 
   async assignUserToProject(projectId: string, userId: string): Promise<void> {
     const url = createApiUrl(API_CONFIG.ENDPOINTS.PROJECTS.ASSIGN_USER, { projectId, userId });
-    const { status, error } = await apiClient.post<void>(url);
-    if (status < 200 || status >= 300) throw new Error(error || `Assignment failed: ${status}`);
+    const { error } = await apiClient.post(url);
+    if (error) throw new Error(error);
   },
 
   async removeUserFromProject(projectId: string, userId: string): Promise<void> {
     const url = createApiUrl(API_CONFIG.ENDPOINTS.PROJECTS.REMOVE_USER, { projectId, userId });
-    const { status, error } = await apiClient.delete<void>(url);
-    if (status < 200 || status >= 300) throw new Error(error || `Removal failed: ${status}`);
+    const { error } = await apiClient.delete(url);
+    if (error) throw new Error(error);
   }
 };
