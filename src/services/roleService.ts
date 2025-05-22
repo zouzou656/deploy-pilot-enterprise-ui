@@ -1,146 +1,47 @@
-
-import { CreateRolePayload, Role, UpdateRolePayload } from '@/types/rbac';
-import useRBACStore from '@/stores/rbacStore';
-
-const API_URL = '/api/auth';
+// src/services/roleService.ts
+import { apiClient } from '@/services/api.client';
+import { API_CONFIG, createApiUrl } from '@/config/api.config';
+import { Role, CreateRoleDto, UpdateRoleDto } from '@/types/rbac';
 
 export const roleService = {
-  getRoles: async (): Promise<Role[]> => {
-    try {
-      // Try to use the backend API first
-      const response = await fetch(`${API_URL}/roles`);
-      
-      if (response.ok) {
-        return response.json();
-      } else {
-        // Fallback to local store if API fails
-        console.warn('API call failed, using local store data instead');
-        // Get roles directly from the store to ensure we have data
-        const roles = useRBACStore.getState().roles;
-        
-        if (roles.length === 0) {
-          // If roles array is empty, try to fetch them
-          await useRBACStore.getState().fetchRoles();
-        }
-        
-        return useRBACStore.getState().roles;
-      }
-    } catch (error) {
-      // Fallback to local store on error
-      console.error('API error, using local store data instead:', error);
-      // Get roles directly from the store to ensure we have data
-      const roles = useRBACStore.getState().roles;
-      
-      if (roles.length === 0) {
-        // If roles array is empty, try to fetch them
-        await useRBACStore.getState().fetchRoles();
-      }
-      
-      return useRBACStore.getState().roles;
+  /** Fetch all roles */
+  async getRoles(): Promise<Role[]> {
+    const { data, error, status } = await apiClient.get<Role[]>(
+        API_CONFIG.ENDPOINTS.ROLES.LIST
+    );
+    if (error) throw new Error(error);
+    return data ?? [];
+  },
+
+  /** Fetch a single role by ID */
+  async getRole(id: string): Promise<Role> {
+    const { data, error } = await apiClient.get<Role>(API_CONFIG.ENDPOINTS.ROLES.GET, {params :{id}});
+    if (error) throw new Error(error);
+    return data!;
+  },
+
+  /** Create a new role */
+  async createRole(payload: CreateRoleDto): Promise<Role> {
+    const { data, error } = await apiClient.post<Role>(
+        API_CONFIG.ENDPOINTS.ROLES.CREATE,
+        payload
+    );
+    if (error) throw new Error(error);
+    return data!;
+  },
+
+  /** Update an existing role */
+  async updateRole(id: string, payload: UpdateRoleDto): Promise<Role> {
+    const { data, error } = await apiClient.put<Role>(API_CONFIG.ENDPOINTS.ROLES.UPDATE, payload,{params: { id }});
+    if (error) throw new Error(error);
+    return data!;
+  },
+
+  /** Delete a role */
+  async deleteRole(id: string): Promise<void> {
+    const { status, error } = await apiClient.delete<void>(API_CONFIG.ENDPOINTS.ROLES.DELETE,{params : {id}});
+    if (status < 200 || status >= 300) {
+      throw new Error(error ?? `Delete failed with status ${status}`);
     }
   },
-  
-  getRole: async (id: string): Promise<Role> => {
-    try {
-      // Try to use the backend API first
-      const response = await fetch(`${API_URL}/roles/${id}`);
-      
-      if (response.ok) {
-        return response.json();
-      } else {
-        // Fallback to local store if API fails
-        console.warn('API call failed, using local store data instead');
-        const { fetchRole } = useRBACStore.getState();
-        return await fetchRole(id);
-      }
-    } catch (error) {
-      // Fallback to local store on error
-      console.error('API error, using local store data instead:', error);
-      const { fetchRole } = useRBACStore.getState();
-      return await fetchRole(id);
-    }
-  },
-  
-  createRole: async (roleData: CreateRolePayload): Promise<Role> => {
-    try {
-      // Try to use the backend API first
-      const response = await fetch(`${API_URL}/roles`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(roleData),
-      });
-      
-      if (response.ok) {
-        return response.json();
-      } else {
-        // Fallback to local store if API fails
-        console.warn('API call failed, using local store data instead');
-        const { createRole } = useRBACStore.getState();
-        return await createRole({
-          name: roleData.name,  // Make sure required fields are passed
-          permissions: roleData.permissions,
-          description: roleData.description
-        });
-      }
-    } catch (error) {
-      // Fallback to local store on error
-      console.error('API error, using local store data instead:', error);
-      const { createRole } = useRBACStore.getState();
-      return await createRole({
-        name: roleData.name,  // Make sure required fields are passed
-        permissions: roleData.permissions,
-        description: roleData.description
-      });
-    }
-  },
-  
-  updateRole: async (id: string, roleData: UpdateRolePayload): Promise<Role> => {
-    try {
-      // Try to use the backend API first
-      const response = await fetch(`${API_URL}/roles/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(roleData),
-      });
-      
-      if (response.ok) {
-        return response.json();
-      } else {
-        // Fallback to local store if API fails
-        console.warn('API call failed, using local store data instead');
-        const { updateRole } = useRBACStore.getState();
-        return await updateRole(id, roleData);
-      }
-    } catch (error) {
-      // Fallback to local store on error
-      console.error('API error, using local store data instead:', error);
-      const { updateRole } = useRBACStore.getState();
-      return await updateRole(id, roleData);
-    }
-  },
-  
-  deleteRole: async (id: string): Promise<void> => {
-    try {
-      // Try to use the backend API first
-      const response = await fetch(`${API_URL}/roles/${id}`, {
-        method: 'DELETE',
-      });
-      
-      if (!response.ok) {
-        // Fallback to local store if API fails
-        console.warn('API call failed, using local store data instead');
-        const { deleteRole } = useRBACStore.getState();
-        await deleteRole(id);
-      }
-    } catch (error) {
-      // Fallback to local store on error
-      console.error('API error, using local store data instead:', error);
-      const { deleteRole } = useRBACStore.getState();
-      await deleteRole(id);
-    }
-  }
 };
