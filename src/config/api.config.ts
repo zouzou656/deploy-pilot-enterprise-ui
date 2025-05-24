@@ -55,6 +55,23 @@ export const API_CONFIG = {
       ASSIGN_USER: '/api/projects/{projectId}/users/{userId}',
       REMOVE_USER: '/api/projects/{projectId}/users/{userId}',
     },
+    ENVIRONMENTS: {
+      LIST: '/api/environments',
+      GET: '/api/environments/{id}',
+      CREATE: '/api/environments',
+      UPDATE: '/api/environments/{id}',
+      DELETE: '/api/environments/{id}',
+      BY_PROJECT: '/api/projects/{projectId}/environments',
+      BY_USER: '/api/environments/user/{userId}',
+      ASSIGN_USER: '/api/environments/{environmentId}/users/{userId}',
+      REMOVE_USER: '/api/environments/{environmentId}/users/{userId}',
+    },
+    FILE_OVERRIDES: {
+      BY_ENVIRONMENT: '/api/environments/{environmentId}/file-overrides',
+      CREATE: '/api/environments/{environmentId}/file-overrides',
+      UPDATE: '/api/file-overrides/{id}',
+      DELETE: '/api/file-overrides/{id}',
+    },
     GIT: {
       BRANCHES: '/api/git/branches',
       COMMITS: '/api/git/commits',

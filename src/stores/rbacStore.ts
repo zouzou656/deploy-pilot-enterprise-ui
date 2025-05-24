@@ -1,248 +1,188 @@
-// src/stores/rbacStore.ts
+
 import { create } from 'zustand';
-import { apiClient } from '@/services/api.client';
-import { createApiUrl, API_CONFIG } from '@/config/api.config';
-import {
-  Permission,
-  Role,
-  UserDetails,
-  UserListItem,
-  CreateUserDto,
-  UpdateUserDto,
-  CreateRoleDto,
-  UpdateRoleDto
+import { 
+  User, 
+  UserDetail, 
+  Role, 
+  RoleDetail, 
+  Permission, 
+  CreateUserDto, 
+  UpdateUserDto, 
+  CreateRoleDto, 
+  UpdateRoleDto, 
+  CreatePermissionDto, 
+  UpdatePermissionDto 
 } from '@/types/rbac';
+import { userService } from '@/services/userService';
+import { roleService } from '@/services/roleService';
+import { permissionService } from '@/services/permissionService';
 
 interface RBACState {
-  users: UserListItem[];
-  roles: Role[];
-  permissions: Permission[];
-  isLoading: boolean;
-  error: string | null;
-}
+  // Users
+  users: User[];
+  selectedUser: UserDetail | null;
+  isLoadingUsers: boolean;
 
-interface RBACActions {
+  // Roles
+  roles: Role[];
+  selectedRole: RoleDetail | null;
+  isLoadingRoles: boolean;
+
+  // Permissions
+  permissions: Permission[];
+  isLoadingPermissions: boolean;
+
+  // User Actions
   fetchUsers: () => Promise<void>;
-  fetchUser: (id: string) => Promise<UserDetails>;
-  createUser: (userData: CreateUserDto) => Promise<UserDetails>;
-  updateUser: (id: string, userData: UpdateUserDto) => Promise<UserDetails>;
+  fetchUser: (id: string) => Promise<UserDetail>;
+  createUser: (data: CreateUserDto) => Promise<UserDetail>;
+  updateUser: (id: string, data: UpdateUserDto) => Promise<UserDetail>;
   deleteUser: (id: string) => Promise<void>;
 
+  // Role Actions
   fetchRoles: () => Promise<void>;
-  fetchRole: (id: string) => Promise<Role>;
-  createRole: (roleData: CreateRoleDto) => Promise<Role>;
-  updateRole: (id: string, roleData: UpdateRoleDto) => Promise<Role>;
+  fetchRole: (id: string) => Promise<RoleDetail>;
+  createRole: (data: CreateRoleDto) => Promise<RoleDetail>;
+  updateRole: (id: string, data: UpdateRoleDto) => Promise<RoleDetail>;
   deleteRole: (id: string) => Promise<void>;
 
+  // Permission Actions
   fetchPermissions: () => Promise<void>;
+  createPermission: (data: CreatePermissionDto) => Promise<Permission>;
+  updatePermission: (id: string, data: UpdatePermissionDto) => Promise<Permission>;
+  deletePermission: (id: string) => Promise<void>;
 }
 
-const useRBACStore = create<RBACState & RBACActions>((set, get) => ({
+const useRBACStore = create<RBACState>((set, get) => ({
+  // Initial state
   users: [],
+  selectedUser: null,
+  isLoadingUsers: false,
   roles: [],
+  selectedRole: null,
+  isLoadingRoles: false,
   permissions: [],
-  isLoading: false,
-  error: null,
+  isLoadingPermissions: false,
 
-  // -------- Users --------
+  // User actions
   fetchUsers: async () => {
-    set({ isLoading: true, error: null });
+    set({ isLoadingUsers: true });
     try {
-      const { data } = await apiClient.get<UserListItem[]>(
-          API_CONFIG.ENDPOINTS.USERS.LIST
-      );
-      console.log(data);
-      set({ users: data, isLoading: false });
-    } catch (err: any) {
-      set({
-        isLoading: false,
-        error: err.message ?? 'Failed to fetch users'
-      });
-      throw err;
+      const users = await userService.getUsers();
+      set({ users, isLoadingUsers: false });
+    } catch (error) {
+      set({ isLoadingUsers: false });
+      throw error;
     }
   },
 
   fetchUser: async (id: string) => {
-    set({ isLoading: true, error: null });
-    try {
-      const url = createApiUrl(API_CONFIG.ENDPOINTS.USERS.GET, { id });
-      const { data } = await apiClient.get<UserDetails>(url);
-      set({ isLoading: false });
-      return data;
-    } catch (err: any) {
-      set({
-        isLoading: false,
-        error: err.message ?? `Failed to fetch user ${id}`
-      });
-      throw err;
-    }
+    const user = await userService.getUser(id);
+    set({ selectedUser: user });
+    return user;
   },
 
-  createUser: async (userData: CreateUserDto) => {
-    set({ isLoading: true, error: null });
-    try {
-      const { data } = await apiClient.post<UserDetails>(
-          API_CONFIG.ENDPOINTS.USERS.CREATE,
-          userData
-      );
-      set(state => ({
-        users: [...state.users, data],
-        isLoading: false
-      }));
-      return data;
-    } catch (err: any) {
-      set({
-        isLoading: false,
-        error: err.message ?? 'Failed to create user'
-      });
-      throw err;
-    }
+  createUser: async (data: CreateUserDto) => {
+    const user = await userService.createUser(data);
+    const { users } = get();
+    set({ users: [...users, user] });
+    return user;
   },
 
-  updateUser: async (id: string, userData: UpdateUserDto) => {
-    set({ isLoading: true, error: null });
-    try {
-      const url = createApiUrl(API_CONFIG.ENDPOINTS.USERS.UPDATE, { id });
-      const { data } = await apiClient.put<UserDetails>(url, userData);
-      set(state => ({
-        users: state.users.map(u => (u.id === id ? data : u)),
-        isLoading: false
-      }));
-      return data;
-    } catch (err: any) {
-      set({
-        isLoading: false,
-        error: err.message ?? `Failed to update user ${id}`
-      });
-      throw err;
-    }
+  updateUser: async (id: string, data: UpdateUserDto) => {
+    const updatedUser = await userService.updateUser(id, data);
+    const { users } = get();
+    set({ 
+      users: users.map(u => u.id === id ? updatedUser : u),
+      selectedUser: updatedUser
+    });
+    return updatedUser;
   },
 
   deleteUser: async (id: string) => {
-    set({ isLoading: true, error: null });
-    try {
-      const url = createApiUrl(API_CONFIG.ENDPOINTS.USERS.DELETE, { id });
-      await apiClient.delete(url);
-      set(state => ({
-        users: state.users.filter(u => u.id !== id),
-        isLoading: false
-      }));
-    } catch (err: any) {
-      set({
-        isLoading: false,
-        error: err.message ?? `Failed to delete user ${id}`
-      });
-      throw err;
-    }
+    await userService.deleteUser(id);
+    const { users } = get();
+    set({ 
+      users: users.filter(u => u.id !== id),
+      selectedUser: null
+    });
   },
 
-  // -------- Roles --------
+  // Role actions
   fetchRoles: async () => {
-    set({ isLoading: true, error: null });
+    set({ isLoadingRoles: true });
     try {
-      const { data } = await apiClient.get<Role[]>(
-          API_CONFIG.ENDPOINTS.ROLES.LIST
-      );
-      set({ roles: data, isLoading: false });
-    } catch (err: any) {
-      set({
-        isLoading: false,
-        error: err.message ?? 'Failed to fetch roles'
-      });
-      throw err;
+      const roles = await roleService.getRoles();
+      set({ roles, isLoadingRoles: false });
+    } catch (error) {
+      set({ isLoadingRoles: false });
+      throw error;
     }
   },
 
   fetchRole: async (id: string) => {
-    set({ isLoading: true, error: null });
-    try {
-      const url = createApiUrl(API_CONFIG.ENDPOINTS.ROLES.GET, { id });
-      const { data } = await apiClient.get<Role>(url);
-      set({ isLoading: false });
-      return data;
-    } catch (err: any) {
-      set({
-        isLoading: false,
-        error: err.message ?? `Failed to fetch role ${id}`
-      });
-      throw err;
-    }
+    const role = await roleService.getRole(id);
+    set({ selectedRole: role });
+    return role;
   },
 
-  createRole: async (roleData: CreateRoleDto) => {
-    set({ isLoading: true, error: null });
-    try {
-      const { data } = await apiClient.post<Role>(
-          API_CONFIG.ENDPOINTS.ROLES.CREATE,
-          roleData
-      );
-      set(state => ({
-        roles: [...state.roles, data],
-        isLoading: false
-      }));
-      return data;
-    } catch (err: any) {
-      set({
-        isLoading: false,
-        error: err.message ?? 'Failed to create role'
-      });
-      throw err;
-    }
+  createRole: async (data: CreateRoleDto) => {
+    const role = await roleService.createRole(data);
+    const { roles } = get();
+    set({ roles: [...roles, role] });
+    return role;
   },
 
-  updateRole: async (id: string, roleData: UpdateRoleDto) => {
-    set({ isLoading: true, error: null });
-    try {
-      const url = createApiUrl(API_CONFIG.ENDPOINTS.ROLES.UPDATE, { id });
-      const { data } = await apiClient.put<Role>(url, roleData);
-      set(state => ({
-        roles: state.roles.map(r => (r.id === id ? data : r)),
-        isLoading: false
-      }));
-      return data;
-    } catch (err: any) {
-      set({
-        isLoading: false,
-        error: err.message ?? `Failed to update role ${id}`
-      });
-      throw err;
-    }
+  updateRole: async (id: string, data: UpdateRoleDto) => {
+    const updatedRole = await roleService.updateRole(id, data);
+    const { roles } = get();
+    set({ 
+      roles: roles.map(r => r.id === id ? updatedRole : r),
+      selectedRole: updatedRole
+    });
+    return updatedRole;
   },
 
   deleteRole: async (id: string) => {
-    set({ isLoading: true, error: null });
+    await roleService.deleteRole(id);
+    const { roles } = get();
+    set({ 
+      roles: roles.filter(r => r.id !== id),
+      selectedRole: null
+    });
+  },
+
+  // Permission actions
+  fetchPermissions: async () => {
+    set({ isLoadingPermissions: true });
     try {
-      const url = createApiUrl(API_CONFIG.ENDPOINTS.ROLES.DELETE, { id });
-      await apiClient.delete(url);
-      set(state => ({
-        roles: state.roles.filter(r => r.id !== id),
-        isLoading: false
-      }));
-    } catch (err: any) {
-      set({
-        isLoading: false,
-        error: err.message ?? `Failed to delete role ${id}`
-      });
-      throw err;
+      const permissions = await permissionService.getPermissions();
+      set({ permissions, isLoadingPermissions: false });
+    } catch (error) {
+      set({ isLoadingPermissions: false });
+      throw error;
     }
   },
 
-  // -------- Permissions --------
-  fetchPermissions: async () => {
-    set({ isLoading: true, error: null });
-    try {
-      const { data } = await apiClient.get<Permission[]>(
-          API_CONFIG.ENDPOINTS.PERMISSIONS.LIST
-      );
-      set({ permissions: data, isLoading: false });
-    } catch (err: any) {
-      set({
-        isLoading: false,
-        error: err.message ?? 'Failed to fetch permissions'
-      });
-      throw err;
-    }
-  }
+  createPermission: async (data: CreatePermissionDto) => {
+    const permission = await permissionService.createPermission(data);
+    const { permissions } = get();
+    set({ permissions: [...permissions, permission] });
+    return permission;
+  },
+
+  updatePermission: async (id: string, data: UpdatePermissionDto) => {
+    const updatedPermission = await permissionService.updatePermission(id, data);
+    const { permissions } = get();
+    set({ permissions: permissions.map(p => p.id === id ? updatedPermission : p) });
+    return updatedPermission;
+  },
+
+  deletePermission: async (id: string) => {
+    await permissionService.deletePermission(id);
+    const { permissions } = get();
+    set({ permissions: permissions.filter(p => p.id !== id) });
+  },
 }));
 
 export default useRBACStore;

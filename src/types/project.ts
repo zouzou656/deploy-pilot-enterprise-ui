@@ -6,21 +6,20 @@ export interface Project {
   description?: string;
   gitRepoUrl: string;
   gitUsername?: string;
-  gitPassword?: string; // This would be securely stored
+  gitPassword?: string;
   createdAt: string;
   updatedAt: string;
-  createdBy: string;
 }
 
-export interface ProjectEnvironment {
+export interface Environment {
   id: string;
   projectId: string;
   name: string;
   host: string;
-  port: number;
+  port?: number;
   username: string;
-  password?: string; // This would be securely stored
-  defaultChannel?: string;
+  password?: string;
+  deploymentChannel?: string;
   isProduction: boolean;
   createdAt: string;
   updatedAt: string;
@@ -29,25 +28,59 @@ export interface ProjectEnvironment {
 export interface FileOverride {
   id: string;
   environmentId: string;
-  filename: string;
-  fileType: 'BIX' | 'PROXY';
-  originalValue: string;
-  overrideValue: string;
+  filePath: string;
+  content: string;
+  createdBy: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface CreateProjectDto {
+  name: string;
+  description?: string;
+  gitRepoUrl: string;
+  gitUsername?: string;
+  gitPassword?: string;
+}
+
+export interface UpdateProjectDto {
+  name?: string;
+  description?: string;
+  gitRepoUrl?: string;
+  gitUsername?: string;
+  gitPassword?: string;
+}
+
+export interface CreateEnvironmentDto {
+  projectId: string;
+  name: string;
+  host: string;
+  port?: number;
+  username: string;
+  password?: string;
+  deploymentChannel?: string;
+  isProduction: boolean;
+}
+
+export interface UpdateEnvironmentDto {
+  name?: string;
+  host?: string;
+  port?: number;
+  username?: string;
+  password?: string;
+  deploymentChannel?: string;
+  isProduction?: boolean;
+}
+
+export interface CreateFileOverrideDto {
+  environmentId: string;
+  filePath: string;
+  content: string;
   createdBy: string;
 }
 
-export interface ProjectUser {
-  projectId: string;
-  userId: string;
-  role: 'ADMIN' | 'DEVELOPER' | 'VIEWER';
-}
-
-export interface ProjectEnvironmentUser {
-  environmentId: string;
-  userId: string;
-  canManageOverrides: boolean;
+export interface UpdateFileOverrideDto {
+  content: string;
 }
 
 export interface JarGenerationPayload {
