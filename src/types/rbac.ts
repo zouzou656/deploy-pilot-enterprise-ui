@@ -1,45 +1,49 @@
 
-// Define types for RBAC entities and DTOs
-
-export interface Permission {
-  id: string;
-  name: string;
-  description: string;
-  groupName: string;
-  createdAt: Date;
-}
-
-export interface Role {
-  id: string;
-  name: string;
-  description: string;
-}
-
-export interface RoleDetail extends Role {
-  createdAt: Date;
-  updatedAt: Date;
-  permissions?: Permission[];
-}
-
-export interface UserListItem {
+export interface User {
   id: string;
   email: string;
   firstName?: string;
   lastName?: string;
   role?: string;
   status?: string;
-  lastLogin?: Date;
+  lastLogin?: string;
 }
 
-export interface UserDetail extends UserListItem {
+export interface UserDetail {
+  id: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  role?: string;
+  status?: string;
+  lastLogin?: string;
   username?: string;
-  createdAt: Date;
-  updatedAt: Date;
-  permissions?: Permission[];
-  roles?: Role[];
+  createdAt: string;
+  updatedAt: string;
 }
 
-// DTOs for API requests
+export interface Role {
+  id: string;
+  name: string;
+  description?: string;
+}
+
+export interface RoleDetail {
+  id: string;
+  name: string;
+  description?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Permission {
+  id: string;
+  name: string;
+  description?: string;
+  groupName?: string;
+  createdAt: string;
+}
+
 export interface CreateUserDto {
   email: string;
   password: string;

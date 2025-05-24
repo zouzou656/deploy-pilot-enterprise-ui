@@ -1,23 +1,7 @@
 
 import { apiClient } from '@/services/api.client';
 import { API_CONFIG, createApiUrl } from '@/config/api.config';
-import { Project } from '@/types/project';
-
-export interface CreateProjectDto {
-  name: string;
-  description?: string;
-  gitRepoUrl?: string;
-  gitUsername?: string;
-  gitPassword?: string;
-}
-
-export interface UpdateProjectDto {
-  name?: string;
-  description?: string;
-  gitRepoUrl?: string;
-  gitUsername?: string;
-  gitPassword?: string;
-}
+import { Project, CreateProjectDto, UpdateProjectDto } from '@/types/project';
 
 export const projectService = {
   async getProjects(): Promise<Project[]> {
