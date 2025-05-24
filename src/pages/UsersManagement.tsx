@@ -1,24 +1,179 @@
-// A simplified version that should fix the build errors
-// You can replace with your full implementation
-import React from 'react';
+
+import React, { useState, useEffect } from 'react';
+import { Plus, Edit, Trash, RefreshCcw, Search } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import AuthGuard from '@/components/auth/AuthGuard';
 import PageHeader from '@/components/ui-custom/PageHeader';
-import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
+import useRBACStore from '@/stores/rbacStore';
 
 const UsersManagement = () => {
-  // Simplified version to fix build errors
+  const { toast } = useToast();
+  const [searchTerm, setSearchTerm] = useState('');
+  const { 
+    users, 
+    isLoadingUsers, 
+    fetchUsers, 
+    deleteUser 
+  } = useRBACStore();
+
+  useEffect(() => {
+    fetchUsers().catch(err => {
+      toast({
+        title: 'Error loading users',
+        description: err.message,
+        variant: 'destructive'
+      });
+    });
+  }, [fetchUsers, toast]);
+
+  const filteredUsers = users.filter(user =>
+    user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.lastName?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const handleRefresh = () => {
+    fetchUsers().catch(err => {
+      toast({
+        title: 'Error refreshing users',
+        description: err.message,
+        variant: 'destructive'
+      });
+    });
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteUser(id);
+      toast({
+        title: 'User deleted',
+        description: 'User has been successfully deleted.'
+      });
+    } catch (err: any) {
+      toast({
+        title: 'Error deleting user',
+        description: err.message,
+        variant: 'destructive'
+      });
+    }
+  };
+
   return (
-    <div>
-      <PageHeader
-        title="User Management"
-        description="Manage users and their access"
-      />
-      
-      <Card>
-        <CardContent className="py-6">
-          <p>Users Management Page</p>
-        </CardContent>
-      </Card>
-    </div>
+    <AuthGuard requiredPermission="user:view">
+      <div className="space-y-6 p-6">
+        <PageHeader 
+          title="User Management" 
+          description="Manage users and their access"
+        />
+
+        <div className="flex justify-between items-center">
+          <div className="flex items-center space-x-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Input
+                placeholder="Search users..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 w-64"
+              />
+            </div>
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={isLoadingUsers}
+            >
+              <RefreshCcw className="h-4 w-4 mr-2" />
+              Refresh
+            </Button>
+            <Button>
+              <Plus className="mr-2 h-4 w-4" /> 
+              Add User
+            </Button>
+          </div>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Users ({filteredUsers.length})</CardTitle>
+            <CardDescription>Manage system users and their permissions</CardDescription>
+          </CardHeader>
+          
+          <CardContent>
+            <ScrollArea className="h-[500px]">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Last Login</TableHead>
+                    <TableHead className="w-[100px]">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredUsers.map((user) => (
+                    <TableRow key={user.id}>
+                      <TableCell>
+                        <div className="font-medium">
+                          {user.firstName} {user.lastName}
+                        </div>
+                      </TableCell>
+                      <TableCell>{user.email}</TableCell>
+                      <TableCell>
+                        <Badge variant={user.role === 'ADMIN' ? 'default' : 'secondary'}>
+                          {user.role}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={user.status === 'ACTIVE' ? 'default' : 'destructive'}>
+                          {user.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : 'Never'}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex space-x-2">
+                          <Button variant="ghost" size="sm">
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => handleDelete(user.id!)}
+                          >
+                            <Trash className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  
+                  {filteredUsers.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-10">
+                        {searchTerm ? 'No users found matching your search.' : 'No users found.'}
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </ScrollArea>
+          </CardContent>
+        </Card>
+      </div>
+    </AuthGuard>
   );
 };
 

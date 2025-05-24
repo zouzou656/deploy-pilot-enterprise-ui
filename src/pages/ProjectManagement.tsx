@@ -11,6 +11,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import CreateProjectDialog from '@/components/dialogs/CreateProjectDialog';
+import CreateEnvironmentDialog from '@/components/dialogs/CreateEnvironmentDialog';
 
 import { projectService } from '@/services/projectService';
 import { environmentService } from '@/services/environmentService';
@@ -25,6 +27,8 @@ const ProjectManagement = () => {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [selectedEnvironment, setSelectedEnvironment] = useState<Environment | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showCreateProject, setShowCreateProject] = useState(false);
+  const [showCreateEnvironment, setShowCreateEnvironment] = useState(false);
 
   // Queries
   const { data: projects = [], isLoading: loadingProjects, refetch: refetchProjects } = useQuery({
@@ -79,6 +83,15 @@ const ProjectManagement = () => {
   const handleEnvironmentSelect = (environment: Environment) => {
     setSelectedEnvironment(environment);
     setActiveTab('overrides');
+  };
+
+  const handleCreateProjectSuccess = () => {
+    refetchProjects();
+    refreshProjects();
+  };
+
+  const handleCreateEnvironmentSuccess = () => {
+    refetchEnvironments();
   };
 
   return (
@@ -136,7 +149,7 @@ const ProjectManagement = () => {
                   <CardTitle>Projects</CardTitle>
                   <CardDescription>Manage your OSB integration projects</CardDescription>
                 </div>
-                <Button>
+                <Button onClick={() => setShowCreateProject(true)}>
                   <Plus className="mr-2 h-4 w-4" /> 
                   Add Project
                 </Button>
@@ -203,7 +216,7 @@ const ProjectManagement = () => {
                     <CardTitle>Environments for {selectedProject.name}</CardTitle>
                     <CardDescription>Manage environments for this project</CardDescription>
                   </div>
-                  <Button>
+                  <Button onClick={() => setShowCreateEnvironment(true)}>
                     <Plus className="mr-2 h-4 w-4" /> 
                     Add Environment
                   </Button>
@@ -360,6 +373,21 @@ const ProjectManagement = () => {
             )}
           </TabsContent>
         </Tabs>
+
+        <CreateProjectDialog
+          open={showCreateProject}
+          onOpenChange={setShowCreateProject}
+          onSuccess={handleCreateProjectSuccess}
+        />
+
+        {selectedProject && (
+          <CreateEnvironmentDialog
+            open={showCreateEnvironment}
+            onOpenChange={setShowCreateEnvironment}
+            onSuccess={handleCreateEnvironmentSuccess}
+            projectId={selectedProject.id}
+          />
+        )}
       </div>
     </AuthGuard>
   );

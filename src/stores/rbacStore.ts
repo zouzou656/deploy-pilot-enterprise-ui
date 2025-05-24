@@ -4,7 +4,6 @@ import {
   User, 
   UserDetail, 
   Role, 
-  RoleDetail, 
   Permission, 
   CreateUserDto, 
   UpdateUserDto, 
@@ -25,7 +24,7 @@ interface RBACState {
 
   // Roles
   roles: Role[];
-  selectedRole: RoleDetail | null;
+  selectedRole: Role | null;
   isLoadingRoles: boolean;
 
   // Permissions
@@ -41,9 +40,9 @@ interface RBACState {
 
   // Role Actions
   fetchRoles: () => Promise<void>;
-  fetchRole: (id: string) => Promise<RoleDetail>;
-  createRole: (data: CreateRoleDto) => Promise<RoleDetail>;
-  updateRole: (id: string, data: UpdateRoleDto) => Promise<RoleDetail>;
+  fetchRole: (id: string) => Promise<Role>;
+  createRole: (data: CreateRoleDto) => Promise<Role>;
+  updateRole: (id: string, data: UpdateRoleDto) => Promise<Role>;
   deleteRole: (id: string) => Promise<void>;
 
   // Permission Actions
