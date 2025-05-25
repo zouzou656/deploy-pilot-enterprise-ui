@@ -1,42 +1,13 @@
 
 import { apiClient } from '@/services/api.client';
-import { API_CONFIG } from '@/config/api.config';
-
-export interface GitApiParams {
-  projectId: string;
-  branch?: string;
-  sha?: string;
-  path?: string;
-  baseSha?: string;
-  headSha?: string;
-}
-
-export interface CommitDto {
-  sha: string;
-  message: string;
-  date: string;
-}
-
-export interface FileChangeDto {
-  filename: string;
-  status: string;
-  patch?: string;
-}
-
-export interface CommitDetailDto {
-  files: FileChangeDto[];
-}
-
-export interface CompareDto {
-  files: FileChangeDto[];
-}
-
-export interface CompareFilesRequest {
-  projectId: string;
-  baseSha: string;
-  headSha: string;
-  files: string[];
-}
+import { 
+  GitApiParams, 
+  CommitDto, 
+  FileChangeDto, 
+  CommitDetailDto, 
+  CompareDto, 
+  CompareFilesRequest 
+} from '@/types/git';
 
 export const gitService = {
   async getBranches(projectId: string): Promise<string[]> {
@@ -117,5 +88,9 @@ export const gitService = {
     });
     if (error) throw new Error(error);
     return data || '';
+  },
+
+  async compareCommits(projectId: string, baseSha: string, headSha: string): Promise<CompareDto> {
+    return this.compare({ projectId, baseSha, headSha });
   }
 };

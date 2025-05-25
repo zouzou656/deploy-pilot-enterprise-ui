@@ -1,4 +1,3 @@
-
 import { apiClient } from '@/services/api.client';
 import { Project, CreateProjectDto, UpdateProjectDto } from '@/types/project';
 
@@ -39,7 +38,7 @@ export const projectService = {
   },
 
   async assignUserToProject(projectId: string, userId: string): Promise<void> {
-    const { error } = await apiClient.post(`/api/projects/${projectId}/users/${userId}`);
+    const { error } = await apiClient.post(`/api/projects/${projectId}/users/${userId}`, {});
     if (error) throw new Error(error);
   },
 

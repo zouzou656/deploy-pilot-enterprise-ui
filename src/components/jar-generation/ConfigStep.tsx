@@ -19,7 +19,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Project, ProjectEnvironment } from '@/types/project';
+import { Project, Environment } from '@/types/project';
 
 type ConfigStepProps = {
   branches: string[];
@@ -35,13 +35,10 @@ type ConfigStepProps = {
   loadingBranches: boolean;
   loadingCommits: boolean;
   
-  // New props for project and environment selection
-  projects: Project[];
-  selectedProject: Project | null;
-  setSelectedProject: (project: Project | null) => void;
-  environments: ProjectEnvironment[];
-  selectedEnvironment: ProjectEnvironment | null;
-  setSelectedEnvironment: (environment: ProjectEnvironment | null) => void;
+  // Environment selection
+  environments: Environment[];
+  selectedEnvironment: Environment | null;
+  setSelectedEnvironment: (environment: Environment | null) => void;
 };
 
 const ConfigStep: React.FC<ConfigStepProps> = ({
@@ -57,9 +54,6 @@ const ConfigStep: React.FC<ConfigStepProps> = ({
   setSelectedCommit,
   loadingBranches,
   loadingCommits,
-  projects,
-  selectedProject,
-  setSelectedProject,
   environments,
   selectedEnvironment,
   setSelectedEnvironment,
@@ -71,110 +65,70 @@ const ConfigStep: React.FC<ConfigStepProps> = ({
           <GitBranch className="inline-block mr-2" />
           Configuration
         </CardTitle>
-        <CardDescription>Select project, environment, branch, and build strategy</CardDescription>
+        <CardDescription>Select environment, branch, and build strategy</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Project Selection */}
+        {/* Environment Selection */}
         <div className="space-y-2">
-          <Label htmlFor="project" className="text-base font-semibold">Project</Label>
+          <Label htmlFor="environment" className="text-base font-semibold">Environment</Label>
           <Select 
-            value={selectedProject?.id || ''} 
+            value={selectedEnvironment?.id || ''} 
             onValueChange={(value) => {
-              const project = projects.find(p => p.id === value) || null;
-              setSelectedProject(project);
+              const env = environments.find(e => e.id === value) || null;
+              setSelectedEnvironment(env);
             }}
           >
             <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select a project" />
+              <SelectValue placeholder="Select an environment" />
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>
-                {projects.map((project) => (
-                  <SelectItem key={project.id} value={project.id}>
-                    {project.name}
+                {environments.map((env) => (
+                  <SelectItem key={env.id} value={env.id}>
+                    {env.name} {env.isProduction && '(Production)'}
                   </SelectItem>
                 ))}
               </SelectGroup>
             </SelectContent>
           </Select>
-          {projects.length === 0 && (
+          {environments.length === 0 && (
             <p className="text-sm text-muted-foreground">
-              No projects available. Please create a project first.
+              No environments available. Please create an environment first.
             </p>
           )}
           
-          {selectedProject && (
+          {selectedEnvironment && (
             <div className="text-sm text-muted-foreground mt-1">
-              {selectedProject.description || 'No description available.'}
+              Host: {selectedEnvironment.host}:{selectedEnvironment.port}
             </div>
           )}
         </div>
-        
-        {/* Environment Selection */}
-        {selectedProject && (
-          <div className="space-y-2">
-            <Label htmlFor="environment" className="text-base font-semibold">Environment</Label>
-            <Select 
-              value={selectedEnvironment?.id || ''} 
-              onValueChange={(value) => {
-                const env = environments.find(e => e.id === value) || null;
-                setSelectedEnvironment(env);
-              }}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select an environment" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {environments.map((env) => (
-                    <SelectItem key={env.id} value={env.id}>
-                      {env.name} {env.isProduction && '(Production)'}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-            {environments.length === 0 && (
-              <p className="text-sm text-muted-foreground">
-                No environments available. Please create an environment first.
-              </p>
-            )}
-            
-            {selectedEnvironment && (
-              <div className="text-sm text-muted-foreground mt-1">
-                Host: {selectedEnvironment.host}:{selectedEnvironment.port}
-              </div>
-            )}
-          </div>
-        )}
 
         {/* Branch Selection */}
-        {selectedProject && (
-          <div className="space-y-2">
-            <Label htmlFor="branch" className="text-base font-semibold">Branch</Label>
-            <Select value={branch} onValueChange={setBranch} disabled={loadingBranches}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select a branch" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {loadingBranches ? (
-                    <SelectItem value="loading">Loading...</SelectItem>
-                  ) : (
-                    branches.map((b) => (
-                      <SelectItem key={b} value={b}>
-                        {b}
-                      </SelectItem>
-                    ))
-                  )}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          </div>
-        )}
+        <div className="space-y-2">
+          <Label htmlFor="branch" className="text-base font-semibold">Branch</Label>
+          <Select value={branch} onValueChange={setBranch} disabled={loadingBranches}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select a branch" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                {loadingBranches ? (
+                  <SelectItem value="loading">Loading...</SelectItem>
+                ) : (
+                  branches.map((b) => (
+                    <SelectItem key={b} value={b}>
+                      {b}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        </div>
 
         {/* Version Number */}
-        {selectedProject && branch && (
+        {branch && (
           <div className="space-y-2">
             <Label htmlFor="version" className="text-base font-semibold">Version</Label>
             <Input
@@ -188,7 +142,7 @@ const ConfigStep: React.FC<ConfigStepProps> = ({
         )}
 
         {/* Build Strategy */}
-        {selectedProject && branch && (
+        {branch && (
           <div className="space-y-2">
             <Label className="text-base font-semibold">Build Strategy</Label>
             <RadioGroup value={strategy} onValueChange={(v) => setStrategy(v as 'full' | 'commit' | 'manual')}>
@@ -226,7 +180,7 @@ const ConfigStep: React.FC<ConfigStepProps> = ({
         )}
 
         {/* Commit Selector (only show if strategy is 'commit') */}
-        {selectedProject && branch && strategy === 'commit' && (
+        {branch && strategy === 'commit' && (
           <div className="space-y-2">
             <Label htmlFor="commit" className="text-base font-semibold">Select Commit</Label>
             <Select value={selectedCommit} onValueChange={setSelectedCommit} disabled={loadingCommits}>

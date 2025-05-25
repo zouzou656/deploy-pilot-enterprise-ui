@@ -2,7 +2,7 @@
 export interface CommitDto {
   sha: string;
   message: string;
-  date: Date;
+  date: string;
 }
 
 export interface FileChangeDto {
@@ -19,22 +19,18 @@ export interface CompareDto {
   files: FileChangeDto[];
 }
 
-export interface CompareFilesRequestWithProjectId {
-  baseSha: string;
-  headSha: string;
-  files?: string[];
-  projectId: string;
-}
-
 export interface GitApiParams {
-  projectId?: string;
+  projectId: string;
   branch?: string;
   sha?: string;
   path?: string;
+  baseSha?: string;
+  headSha?: string;
 }
 
-export interface GitCompareParams {
-  projectId?: string;
+export interface CompareFilesRequest {
+  projectId: string;
   baseSha: string;
   headSha: string;
+  files: string[];
 }

@@ -1,6 +1,5 @@
 
 import { apiClient } from '@/services/api.client';
-import { API_CONFIG } from '@/config/api.config';
 import { 
   Environment, 
   CreateEnvironmentDto, 
@@ -50,7 +49,7 @@ export const environmentService = {
   },
 
   async assignUserToEnvironment(environmentId: string, userId: string): Promise<void> {
-    const { error } = await apiClient.post(`/api/environments/${environmentId}/users/${userId}`);
+    const { error } = await apiClient.post(`/api/environments/${environmentId}/users/${userId}`, {});
     if (error) throw new Error(error);
   },
 

@@ -237,20 +237,16 @@ const PreviewStep: React.FC<PreviewStepProps> = ({
               <table className="w-full">
                 <thead className="bg-muted/50">
                   <tr>
-                    <th className="py-2 px-3 text-left text-sm font-medium">Filename</th>
-                    <th className="py-2 px-3 text-left text-sm font-medium">Type</th>
-                    <th className="py-2 px-3 text-left text-sm font-medium">Original Value</th>
-                    <th className="py-2 px-3 text-left text-sm font-medium">Override Value</th>
+                    <th className="py-2 px-3 text-left text-sm font-medium">File Path</th>
+                    <th className="py-2 px-3 text-left text-sm font-medium">Content Preview</th>
                     <th className="py-2 px-3 text-left text-sm font-medium">Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   {fileOverrides.map((override) => (
                     <tr key={override.id} className="border-t">
-                      <td className="py-2 px-3 text-sm">{override.filename}</td>
-                      <td className="py-2 px-3 text-sm">{override.fileType}</td>
-                      <td className="py-2 px-3 text-sm font-mono">{override.originalValue}</td>
-                      <td className="py-2 px-3 text-sm font-mono">{override.overrideValue}</td>
+                      <td className="py-2 px-3 text-sm">{override.filePath}</td>
+                      <td className="py-2 px-3 text-sm font-mono max-w-xs truncate">{override.content}</td>
                       <td className="py-2 px-3 text-sm">
                         {applyOverrides ? (
                           <span className="flex items-center text-green-600">
@@ -267,7 +263,7 @@ const PreviewStep: React.FC<PreviewStepProps> = ({
                   
                   {fileOverrides.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="py-4 px-3 text-center text-muted-foreground">
+                      <td colSpan={3} className="py-4 px-3 text-center text-muted-foreground">
                         No file overrides found for this environment.
                       </td>
                     </tr>

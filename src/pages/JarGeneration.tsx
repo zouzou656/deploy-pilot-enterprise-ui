@@ -21,6 +21,7 @@ import { gitService } from '@/services/gitService';
 import { environmentService } from '@/services/environmentService';
 import { fileOverrideService } from '@/services/fileOverrideService';
 import { Environment, FileOverride } from '@/types/project';
+import { FileChangeDto } from '@/types/git';
 
 export type GenerationStrategy = 'commit' | 'full' | 'manual';
 
@@ -34,25 +35,24 @@ export interface JarConfig {
   applyOverrides: boolean;
 }
 
-export interface FileChange {
-  filename: string;
-  status: string;
-  patch?: string;
+export interface PipelineStep {
+  number: number;
+  title: string;
+  description: string;
 }
 
 const JarGeneration = () => {
   const { selectedProject } = useProject();
   const { toast } = useToast();
-  const [currentStep, setCurrentStep] = useState(1);
-  const [jarConfig, setJarConfig] = useState<JarConfig>({
-    branch: 'main',
-    strategy: 'commit',
-    version: '1.0.0',
-    environment: null,
-    applyOverrides: false
-  });
-  const [selectedFiles, setSelectedFiles] = useState<FileChange[]>([]);
+  const [currentStep, setCurrentStep] = useState<number>(1);
+  const [branch, setBranch] = useState('main');
+  const [version, setVersion] = useState('1.0.0');
+  const [strategy, setStrategy] = useState<GenerationStrategy>('commit');
+  const [selectedCommit, setSelectedCommit] = useState('');
+  const [selectedEnvironment, setSelectedEnvironment] = useState<Environment | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<FileChangeDto[]>([]);
   const [fileOverrides, setFileOverrides] = useState<FileOverride[]>([]);
+  const [applyOverrides, setApplyOverrides] = useState(false);
 
   // Fetch branches
   const { data: branches = [], isLoading: loadingBranches } = useQuery({
@@ -70,19 +70,19 @@ const JarGeneration = () => {
 
   // Fetch commits when branch changes
   const { data: commits = [], isLoading: loadingCommits, refetch: refetchCommits } = useQuery({
-    queryKey: ['commits', selectedProject?.id, jarConfig.branch],
+    queryKey: ['commits', selectedProject?.id, branch],
     queryFn: () => selectedProject ? gitService.getCommits({
       projectId: selectedProject.id,
-      branch: jarConfig.branch
+      branch: branch
     }) : Promise.resolve([]),
-    enabled: !!selectedProject?.id && !!jarConfig.branch,
+    enabled: !!selectedProject?.id && !!branch,
   });
 
   // Fetch file overrides when environment changes
   const { data: envFileOverrides = [], refetch: refetchOverrides } = useQuery({
-    queryKey: ['file-overrides', jarConfig.environment?.id],
-    queryFn: () => jarConfig.environment ? fileOverrideService.getFileOverridesByEnvironment(jarConfig.environment.id) : Promise.resolve([]),
-    enabled: !!jarConfig.environment?.id,
+    queryKey: ['file-overrides', selectedEnvironment?.id],
+    queryFn: () => selectedEnvironment ? fileOverrideService.getFileOverridesByEnvironment(selectedEnvironment.id) : Promise.resolve([]),
+    enabled: !!selectedEnvironment?.id,
   });
 
   useEffect(() => {
@@ -91,29 +91,25 @@ const JarGeneration = () => {
 
   // Set default branch when branches are loaded
   useEffect(() => {
-    if (branches.length > 0 && !branches.includes(jarConfig.branch)) {
-      setJarConfig(prev => ({ ...prev, branch: branches[0] }));
+    if (branches.length > 0 && !branches.includes(branch)) {
+      setBranch(branches[0]);
     }
-  }, [branches, jarConfig.branch]);
+  }, [branches, branch]);
 
   const handleFetchFiles = async () => {
     if (!selectedProject) return;
 
     try {
-      let files: FileChange[] = [];
+      let files: FileChangeDto[] = [];
       
-      if (jarConfig.strategy === 'full') {
+      if (strategy === 'full') {
         const response = await gitService.getFull({
           projectId: selectedProject.id,
-          branch: jarConfig.branch
+          branch: branch
         });
         files = response.files || [];
-      } else if (jarConfig.strategy === 'commit' && jarConfig.baseSha && jarConfig.headSha) {
-        const response = await gitService.compare({
-          projectId: selectedProject.id,
-          baseSha: jarConfig.baseSha,
-          headSha: jarConfig.headSha
-        });
+      } else if (strategy === 'commit' && selectedCommit) {
+        const response = await gitService.getCommitDetail(selectedCommit, selectedProject.id);
         files = response.files || [];
       }
       
@@ -140,7 +136,7 @@ const JarGeneration = () => {
     }
   };
 
-  const steps = [
+  const steps: PipelineStep[] = [
     { number: 1, title: 'Configuration', description: 'Set branch, strategy and environment' },
     { number: 2, title: 'File Selection', description: 'Choose files to include' },
     { number: 3, title: 'Preview', description: 'Review changes and overrides' },
@@ -149,7 +145,7 @@ const JarGeneration = () => {
 
   if (!selectedProject) {
     return (
-      <AuthGuard requiredPermission="jar:generate">
+      <AuthGuard requiredPermission="deployment:create">
         <div className="flex items-center justify-center h-screen">
           <Card className="text-center p-8">
             <CardContent>
@@ -163,7 +159,7 @@ const JarGeneration = () => {
   }
 
   return (
-    <AuthGuard requiredPermission="jar:generate">
+    <AuthGuard requiredPermission="deployment:create">
       <div className="container mx-auto py-6 space-y-6">
         <PageHeader
           title="JAR Generation"
@@ -178,43 +174,64 @@ const JarGeneration = () => {
 
         {currentStep === 1 && (
           <ConfigStep
-            config={jarConfig}
-            onConfigChange={setJarConfig}
             branches={branches}
-            environments={environments}
+            branch={branch}
+            setBranch={setBranch}
             commits={commits}
-            onNext={handleNext}
-            onFetchFiles={handleFetchFiles}
-            isLoading={loadingBranches || loadingEnvironments || loadingCommits}
+            version={version}
+            setVersion={setVersion}
+            strategy={strategy}
+            setStrategy={setStrategy}
+            selectedCommit={selectedCommit}
+            setSelectedCommit={setSelectedCommit}
+            loadingBranches={loadingBranches}
+            loadingCommits={loadingCommits}
+            environments={environments}
+            selectedEnvironment={selectedEnvironment}
+            setSelectedEnvironment={setSelectedEnvironment}
           />
         )}
 
         {currentStep === 2 && (
-          <FileSelectionStep
-            files={selectedFiles}
-            onFilesChange={setSelectedFiles}
-            onNext={handleNext}
-            onPrevious={handlePrevious}
-          />
+          <div className="flex justify-between">
+            <Button variant="outline" onClick={handlePrevious}>
+              Back
+            </Button>
+            <Button onClick={handleNext}>
+              Next
+            </Button>
+          </div>
         )}
 
         {currentStep === 3 && (
-          <PreviewStep
-            config={jarConfig}
-            files={selectedFiles}
-            fileOverrides={fileOverrides}
-            onNext={handleNext}
-            onPrevious={handlePrevious}
-          />
+          <div className="flex justify-between">
+            <Button variant="outline" onClick={handlePrevious}>
+              Back
+            </Button>
+            <Button onClick={handleNext}>
+              Next
+            </Button>
+          </div>
         )}
 
         {currentStep === 4 && (
           <SummaryStep
-            config={jarConfig}
-            files={selectedFiles}
+            branch={branch}
+            version={version}
+            strategy={strategy}
+            selectedFiles={selectedFiles.map(f => f.filename)}
+            filesToShow={selectedFiles.map(f => ({ filename: f.filename, status: f.status }))}
+            project={selectedProject}
+            environment={selectedEnvironment}
+            applyOverrides={applyOverrides}
             fileOverrides={fileOverrides}
-            onPrevious={handlePrevious}
-            projectId={selectedProject.id}
+            onConfirm={() => {
+              toast({
+                title: 'JAR Generation Started',
+                description: 'Your JAR file is being generated...'
+              });
+            }}
+            onBack={handlePrevious}
           />
         )}
       </div>

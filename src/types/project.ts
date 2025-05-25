@@ -1,5 +1,4 @@
 
-// Project Management Types
 export interface Project {
   id: string;
   name: string;
@@ -7,30 +6,6 @@ export interface Project {
   gitRepoUrl: string;
   gitUsername?: string;
   gitPassword?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface Environment {
-  id: string;
-  projectId: string;
-  name: string;
-  host: string;
-  port?: number;
-  username: string;
-  password?: string;
-  deploymentChannel?: string;
-  isProduction: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface FileOverride {
-  id: string;
-  environmentId: string;
-  filePath: string;
-  content: string;
-  createdBy: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -49,6 +24,20 @@ export interface UpdateProjectDto {
   gitRepoUrl?: string;
   gitUsername?: string;
   gitPassword?: string;
+}
+
+export interface Environment {
+  id: string;
+  projectId: string;
+  name: string;
+  host: string;
+  port?: number;
+  username: string;
+  password?: string;
+  deploymentChannel?: string;
+  isProduction: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface CreateEnvironmentDto {
@@ -72,25 +61,23 @@ export interface UpdateEnvironmentDto {
   isProduction?: boolean;
 }
 
-export interface CreateFileOverrideDto {
+export interface FileOverride {
+  id: string;
   environmentId: string;
   filePath: string;
   content: string;
   createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateFileOverrideDto {
+  environmentId?: string;
+  filePath: string;
+  content: string;
+  createdBy?: string;
 }
 
 export interface UpdateFileOverrideDto {
-  content: string;
-}
-
-export interface JarGenerationPayload {
-  projectId: string;
-  branch: string;
-  version: string;
-  environmentId: string;
-  strategy: 'commit' | 'full' | 'manual';
-  baseSha?: string;
-  headSha?: string;
-  applyOverrides: boolean;
-  files: { filename: string; status: string }[];
+  content?: string;
 }

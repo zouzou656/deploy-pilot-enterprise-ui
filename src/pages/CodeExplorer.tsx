@@ -1,108 +1,125 @@
 
 import React, { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { 
-  Folder, 
-  File, 
-  Search, 
-  RefreshCw, 
-  ChevronRight, 
-  ChevronDown,
-  Code,
-  FileText
-} from 'lucide-react';
+import { Code, FileText, FolderOpen, Folder, Search, RefreshCw, GitBranch } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Badge } from '@/components/ui/badge';
-import CodeEditor from '@/components/ui-custom/CodeEditor';
-import PageHeader from '@/components/ui-custom/PageHeader';
+import { useToast } from '@/hooks/use-toast';
 import AuthGuard from '@/components/auth/AuthGuard';
+import PageHeader from '@/components/ui-custom/PageHeader';
+import CodeEditor from '@/components/ui-custom/CodeEditor';
 import { useProject } from '@/contexts/ProjectContext';
 import { gitService } from '@/services/gitService';
-import { useToast } from '@/hooks/use-toast';
 
 interface FileNode {
   name: string;
   path: string;
-  type: 'file' | 'folder';
+  type: 'file' | 'directory';
   children?: FileNode[];
 }
 
 const CodeExplorer = () => {
   const { selectedProject } = useProject();
   const { toast } = useToast();
-  const [selectedBranch, setSelectedBranch] = useState('main');
-  const [selectedFile, setSelectedFile] = useState<string | null>(null);
+  const [branches, setBranches] = useState<string[]>([]);
+  const [selectedBranch, setSelectedBranch] = useState<string>('main');
+  const [fileTree, setFileTree] = useState<FileNode[]>([]);
+  const [selectedFile, setSelectedFile] = useState<string>('');
+  const [fileContent, setFileContent] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
+  const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set());
+  const [loading, setLoading] = useState(false);
 
-  // Fetch branches
-  const { data: branches = [], isLoading: loadingBranches, refetch: refetchBranches } = useQuery({
-    queryKey: ['branches', selectedProject?.id],
-    queryFn: () => selectedProject ? gitService.getBranches(selectedProject.id) : Promise.resolve([]),
-    enabled: !!selectedProject?.id,
-  });
-
-  // Fetch file tree
-  const { data: files = [], isLoading: loadingFiles, refetch: refetchFiles } = useQuery({
-    queryKey: ['git-tree', selectedProject?.id, selectedBranch],
-    queryFn: () => selectedProject ? gitService.getTree({
-      projectId: selectedProject.id,
-      branch: selectedBranch
-    }) : Promise.resolve([]),
-    enabled: !!selectedProject?.id && !!selectedBranch,
-  });
-
-  // Fetch file content
-  const { data: fileContent = '', isLoading: loadingContent } = useQuery({
-    queryKey: ['file-content', selectedProject?.id, selectedBranch, selectedFile],
-    queryFn: () => selectedProject && selectedFile ? gitService.getFileContent({
-      projectId: selectedProject.id,
-      branch: selectedBranch,
-      path: selectedFile
-    }) : Promise.resolve(''),
-    enabled: !!selectedProject?.id && !!selectedFile,
-  });
-
-  // Set default branch when branches are loaded
+  // Load branches when project changes
   useEffect(() => {
-    if (branches.length > 0 && !branches.includes(selectedBranch)) {
-      setSelectedBranch(branches[0]);
+    if (selectedProject?.id) {
+      loadBranches();
     }
-  }, [branches, selectedBranch]);
+  }, [selectedProject]);
 
-  // Build file tree from flat file list
-  const buildFileTree = (filePaths: string[]): FileNode[] => {
+  // Load file tree when branch changes
+  useEffect(() => {
+    if (selectedProject?.id && selectedBranch) {
+      loadFileTree();
+    }
+  }, [selectedProject, selectedBranch]);
+
+  const loadBranches = async () => {
+    if (!selectedProject?.id) return;
+    
+    setLoading(true);
+    try {
+      const branchList = await gitService.getBranches(selectedProject.id);
+      setBranches(branchList);
+      if (branchList.length > 0 && !branchList.includes(selectedBranch)) {
+        setSelectedBranch(branchList[0]);
+      }
+    } catch (error: any) {
+      toast({
+        title: 'Error loading branches',
+        description: error.message,
+        variant: 'destructive'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadFileTree = async () => {
+    if (!selectedProject?.id || !selectedBranch) return;
+    
+    setLoading(true);
+    try {
+      const files = await gitService.getTree({
+        projectId: selectedProject.id,
+        branch: selectedBranch
+      });
+      
+      // Convert flat file list to tree structure
+      const tree = buildFileTree(files);
+      setFileTree(tree);
+    } catch (error: any) {
+      toast({
+        title: 'Error loading file tree',
+        description: error.message,
+        variant: 'destructive'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const buildFileTree = (files: string[]): FileNode[] => {
     const tree: FileNode[] = [];
-    const pathMap = new Map<string, FileNode>();
+    const nodeMap = new Map<string, FileNode>();
 
-    filePaths.forEach(filePath => {
+    files.forEach(filePath => {
       const parts = filePath.split('/');
       let currentPath = '';
-
+      
       parts.forEach((part, index) => {
         const parentPath = currentPath;
         currentPath = currentPath ? `${currentPath}/${part}` : part;
         
-        if (!pathMap.has(currentPath)) {
+        if (!nodeMap.has(currentPath)) {
           const node: FileNode = {
             name: part,
             path: currentPath,
-            type: index === parts.length - 1 ? 'file' : 'folder',
-            children: []
+            type: index === parts.length - 1 ? 'file' : 'directory',
+            children: index === parts.length - 1 ? undefined : []
           };
-
-          pathMap.set(currentPath, node);
-
-          if (parentPath) {
-            const parent = pathMap.get(parentPath);
-            if (parent) {
-              parent.children!.push(node);
+          
+          nodeMap.set(currentPath, node);
+          
+          if (parentPath && nodeMap.has(parentPath)) {
+            const parent = nodeMap.get(parentPath)!;
+            if (parent.children) {
+              parent.children.push(node);
             }
-          } else {
+          } else if (!parentPath) {
             tree.push(node);
           }
         }
@@ -112,121 +129,105 @@ const CodeExplorer = () => {
     return tree;
   };
 
-  const fileTree = buildFileTree(files);
-
-  // Filter files based on search
-  const filterFiles = (nodes: FileNode[], term: string): FileNode[] => {
-    if (!term) return nodes;
-
-    return nodes.reduce<FileNode[]>((acc, node) => {
-      if (node.type === 'file' && node.name.toLowerCase().includes(term.toLowerCase())) {
-        acc.push(node);
-      } else if (node.type === 'folder' && node.children) {
-        const filteredChildren = filterFiles(node.children, term);
-        if (filteredChildren.length > 0 || node.name.toLowerCase().includes(term.toLowerCase())) {
-          acc.push({
-            ...node,
-            children: filteredChildren
-          });
-        }
-      }
-      return acc;
-    }, []);
+  const loadFileContent = async (filePath: string) => {
+    if (!selectedProject?.id) return;
+    
+    setSelectedFile(filePath);
+    setLoading(true);
+    try {
+      const content = await gitService.getFileContent({
+        projectId: selectedProject.id,
+        branch: selectedBranch,
+        path: filePath
+      });
+      setFileContent(content);
+    } catch (error: any) {
+      toast({
+        title: 'Error loading file content',
+        description: error.message,
+        variant: 'destructive'
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const filteredTree = filterFiles(fileTree, searchTerm);
-
-  const toggleFolder = (path: string) => {
-    const newExpanded = new Set(expandedFolders);
+  const toggleDirectory = (path: string) => {
+    const newExpanded = new Set(expandedDirs);
     if (newExpanded.has(path)) {
       newExpanded.delete(path);
     } else {
       newExpanded.add(path);
     }
-    setExpandedFolders(newExpanded);
+    setExpandedDirs(newExpanded);
   };
 
-  const getFileLanguage = (filename: string): string => {
-    const ext = filename.split('.').pop()?.toLowerCase();
-    switch (ext) {
-      case 'js': return 'javascript';
-      case 'ts': return 'typescript';
-      case 'jsx': return 'javascript';
-      case 'tsx': return 'typescript';
-      case 'json': return 'json';
-      case 'xml': return 'xml';
-      case 'html': return 'html';
-      case 'css': return 'css';
-      case 'java': return 'java';
-      case 'py': return 'python';
-      case 'sql': return 'sql';
-      default: return 'text';
+  const renderFileNode = (node: FileNode, level: number = 0): React.ReactNode => {
+    const isExpanded = expandedDirs.has(node.path);
+    const paddingLeft = level * 20;
+    
+    if (node.type === 'directory') {
+      return (
+        <div key={node.path}>
+          <div
+            className="flex items-center py-1 px-2 hover:bg-muted/50 cursor-pointer"
+            style={{ paddingLeft }}
+            onClick={() => toggleDirectory(node.path)}
+          >
+            {isExpanded ? <FolderOpen className="h-4 w-4 mr-2" /> : <Folder className="h-4 w-4 mr-2" />}
+            <span className="text-sm">{node.name}</span>
+          </div>
+          {isExpanded && node.children && (
+            <div>
+              {node.children.map(child => renderFileNode(child, level + 1))}
+            </div>
+          )}
+        </div>
+      );
+    } else {
+      const isSelected = selectedFile === node.path;
+      return (
+        <div
+          key={node.path}
+          className={`flex items-center py-1 px-2 cursor-pointer ${
+            isSelected ? 'bg-primary/10 text-primary' : 'hover:bg-muted/50'
+          }`}
+          style={{ paddingLeft }}
+          onClick={() => loadFileContent(node.path)}
+        >
+          <FileText className="h-4 w-4 mr-2" />
+          <span className="text-sm">{node.name}</span>
+        </div>
+      );
     }
   };
 
-  const renderFileNode = (node: FileNode, depth = 0) => {
-    const isExpanded = expandedFolders.has(node.path);
-    const isSelected = selectedFile === node.path;
-
-    return (
-      <div key={node.path}>
-        <div
-          className={`flex items-center py-1 px-2 cursor-pointer hover:bg-muted/50 ${
-            isSelected ? 'bg-muted' : ''
-          }`}
-          style={{ paddingLeft: `${depth * 20 + 8}px` }}
-          onClick={() => {
-            if (node.type === 'folder') {
-              toggleFolder(node.path);
-            } else {
-              setSelectedFile(node.path);
-            }
-          }}
-        >
-          {node.type === 'folder' ? (
-            <>
-              {isExpanded ? (
-                <ChevronDown className="h-4 w-4 mr-1" />
-              ) : (
-                <ChevronRight className="h-4 w-4 mr-1" />
-              )}
-              <Folder className="h-4 w-4 mr-2 text-blue-500" />
-            </>
-          ) : (
-            <>
-              <div className="w-5" />
-              {node.name.includes('.') ? (
-                <Code className="h-4 w-4 mr-2 text-green-500" />
-              ) : (
-                <FileText className="h-4 w-4 mr-2 text-gray-500" />
-              )}
-            </>
-          )}
-          <span className="text-sm truncate">{node.name}</span>
-        </div>
-        
-        {node.type === 'folder' && isExpanded && node.children && (
-          <div>
-            {node.children.map(child => renderFileNode(child, depth + 1))}
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  const handleRefresh = () => {
-    refetchBranches();
-    refetchFiles();
+  const filteredTree = (nodes: FileNode[]): FileNode[] => {
+    if (!searchTerm) return nodes;
+    
+    return nodes.filter(node => {
+      if (node.name.toLowerCase().includes(searchTerm.toLowerCase())) {
+        return true;
+      }
+      if (node.children) {
+        const filteredChildren = filteredTree(node.children);
+        return filteredChildren.length > 0;
+      }
+      return false;
+    }).map(node => ({
+      ...node,
+      children: node.children ? filteredTree(node.children) : undefined
+    }));
   };
 
   if (!selectedProject) {
     return (
-      <AuthGuard requiredPermission="git:view">
+      <AuthGuard requiredPermission="project:view">
         <div className="flex items-center justify-center h-screen">
           <Card className="text-center p-8">
             <CardContent>
               <Code className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-              <p className="text-muted-foreground">Please select a project to explore its code.</p>
+              <p className="text-muted-foreground">Please select a project to explore code.</p>
             </CardContent>
           </Card>
         </div>
@@ -235,120 +236,155 @@ const CodeExplorer = () => {
   }
 
   return (
-    <AuthGuard requiredPermission="git:view">
-      <div className="h-screen flex flex-col">
-        <div className="p-6 border-b">
-          <PageHeader
-            title="Code Explorer"
-            description={`Explore code for ${selectedProject.name}`}
-          />
-          
-          <div className="flex items-center space-x-4 mt-4">
-            <select
-              value={selectedBranch}
-              onChange={(e) => setSelectedBranch(e.target.value)}
-              className="px-3 py-2 border rounded-md"
-              disabled={loadingBranches}
-            >
-              {branches.map(branch => (
-                <option key={branch} value={branch}>{branch}</option>
-              ))}
-            </select>
-            
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRefresh}
-              disabled={loadingBranches || loadingFiles}
-            >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Refresh
-            </Button>
-            
-            <Badge variant="secondary">
-              {files.length} files
-            </Badge>
-          </div>
-        </div>
+    <AuthGuard requiredPermission="project:view">
+      <div className="container mx-auto py-6 space-y-6">
+        <PageHeader
+          title="Code Explorer"
+          description={`Browse and view source code for ${selectedProject.name}`}
+        />
 
-        <div className="flex-1 flex overflow-hidden">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* File Tree */}
-          <div className="w-80 border-r bg-muted/10">
-            <div className="p-4 border-b">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                <Input
-                  placeholder="Search files..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
+          <div className="space-y-4">
+            {/* Branch Selection */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2">
+                  <GitBranch className="h-5 w-5" />
+                  Branch
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex gap-2">
+                  <Select value={selectedBranch} onValueChange={setSelectedBranch}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select branch" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {branches.map((branch) => (
+                        <SelectItem key={branch} value={branch}>
+                          {branch}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button onClick={loadBranches} size="icon" variant="outline">
+                    <RefreshCw className="h-4 w-4" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Input
+                placeholder="Search files..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
             </div>
-            
-            <ScrollArea className="h-full">
-              <div className="p-2">
-                {loadingFiles ? (
-                  <div className="flex items-center justify-center py-8">
-                    <RefreshCw className="h-4 w-4 animate-spin mr-2" />
-                    Loading files...
-                  </div>
-                ) : filteredTree.length > 0 ? (
-                  filteredTree.map(node => renderFileNode(node))
-                ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    {searchTerm ? 'No files found matching your search.' : 'No files found.'}
-                  </div>
-                )}
-              </div>
-            </ScrollArea>
+
+            {/* File Tree */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5" />
+                  Files
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ScrollArea className="h-96">
+                  {loading ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      Loading files...
+                    </div>
+                  ) : filteredTree(fileTree).length > 0 ? (
+                    <div>
+                      {filteredTree(fileTree).map(node => renderFileNode(node))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      {searchTerm ? 'No files match your search' : 'No files found'}
+                    </div>
+                  )}
+                </ScrollArea>
+              </CardContent>
+            </Card>
           </div>
 
           {/* File Content */}
-          <div className="flex-1 flex flex-col">
-            {selectedFile ? (
-              <>
-                <div className="p-4 border-b bg-muted/10">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <File className="h-4 w-4" />
-                      <span className="font-medium">{selectedFile}</span>
-                    </div>
-                    <Badge variant="outline">
-                      {getFileLanguage(selectedFile)}
-                    </Badge>
-                  </div>
-                </div>
-                
-                <div className="flex-1 overflow-hidden">
-                  {loadingContent ? (
-                    <div className="flex items-center justify-center h-full">
-                      <RefreshCw className="h-4 w-4 animate-spin mr-2" />
-                      Loading file content...
-                    </div>
-                  ) : (
+          <div className="lg:col-span-2">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2">
+                  <Code className="h-5 w-5" />
+                  {selectedFile || 'Select a file to view'}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {selectedFile ? (
+                  <div className="h-96">
                     <CodeEditor
                       value={fileContent}
-                      onChange={() => {}} // Read-only
-                      language={getFileLanguage(selectedFile)}
+                      language={getLanguageFromPath(selectedFile)}
                       readOnly
                     />
-                  )}
-                </div>
-              </>
-            ) : (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center">
-                  <File className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">Select a file to view its content</p>
-                </div>
-              </div>
-            )}
+                  </div>
+                ) : (
+                  <div className="h-96 flex items-center justify-center text-muted-foreground">
+                    Select a file from the tree to view its content
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>
     </AuthGuard>
   );
+};
+
+const getLanguageFromPath = (path: string): string => {
+  const extension = path.split('.').pop()?.toLowerCase();
+  
+  switch (extension) {
+    case 'js':
+    case 'jsx':
+      return 'javascript';
+    case 'ts':
+    case 'tsx':
+      return 'typescript';
+    case 'java':
+      return 'java';
+    case 'py':
+      return 'python';
+    case 'html':
+      return 'html';
+    case 'css':
+      return 'css';
+    case 'scss':
+    case 'sass':
+      return 'scss';
+    case 'json':
+      return 'json';
+    case 'xml':
+      return 'xml';
+    case 'yaml':
+    case 'yml':
+      return 'yaml';
+    case 'md':
+      return 'markdown';
+    case 'sql':
+      return 'sql';
+    case 'sh':
+      return 'shell';
+    case 'dockerfile':
+      return 'dockerfile';
+    default:
+      return 'text';
+  }
 };
 
 export default CodeExplorer;

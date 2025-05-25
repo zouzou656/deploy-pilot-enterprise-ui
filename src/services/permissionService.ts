@@ -1,4 +1,3 @@
-
 import { apiClient } from '@/services/api.client';
 import { API_CONFIG, createApiUrl } from '@/config/api.config';
 import { 
@@ -54,7 +53,7 @@ export const permissionService = {
 
   async assignPermissionToRole(roleId: string, permissionId: string): Promise<void> {
     const url = createApiUrl(API_CONFIG.ENDPOINTS.PERMISSIONS.ASSIGN_TO_ROLE, { roleId, permId: permissionId });
-    const { error } = await apiClient.post(url);
+    const { error } = await apiClient.post(url, {});
     if (error) throw new Error(error);
   },
 
@@ -73,7 +72,7 @@ export const permissionService = {
 
   async assignPermissionToUser(userId: string, permissionId: string): Promise<void> {
     const url = createApiUrl(API_CONFIG.ENDPOINTS.PERMISSIONS.ASSIGN_TO_USER, { userId, permId: permissionId });
-    const { error } = await apiClient.post(url);
+    const { error } = await apiClient.post(url, {});
     if (error) throw new Error(error);
   },
 

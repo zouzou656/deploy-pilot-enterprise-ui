@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { Project, ProjectEnvironment, FileOverride } from '@/types/project';
+import { Project, Environment, FileOverride } from '@/types/project';
 import { FileEntry } from './FileTree';
 
 type SummaryStepProps = {
@@ -21,7 +21,7 @@ type SummaryStepProps = {
   selectedFiles: string[];
   filesToShow: {filename: string, status: string}[];
   project: Project | null;
-  environment: ProjectEnvironment | null;
+  environment: Environment | null;
   applyOverrides: boolean;
   fileOverrides: FileOverride[];
   onConfirm: () => void;
@@ -130,7 +130,7 @@ const SummaryStep: React.FC<SummaryStepProps> = ({
                   <ul className="list-disc pl-5 text-sm space-y-1">
                     {fileOverrides.map((override) => (
                       <li key={override.id}>
-                        {override.filename}: <span className="font-mono">{override.originalValue}</span> → <span className="font-mono">{override.overrideValue}</span>
+                        {override.filePath}: <span className="font-mono">{override.content.substring(0, 50)}...</span>
                       </li>
                     ))}
                   </ul>

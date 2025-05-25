@@ -1,4 +1,3 @@
-
 import { apiClient } from '@/services/api.client';
 import { API_CONFIG, createApiUrl } from '@/config/api.config';
 import { 
@@ -48,7 +47,7 @@ export const userService = {
 
   async assignRoleToUser(userId: string, roleId: string): Promise<void> {
     const url = createApiUrl(API_CONFIG.ENDPOINTS.USERS.ASSIGN_ROLE, { id: userId, roleId });
-    const { error } = await apiClient.post(url);
+    const { error } = await apiClient.post(url, {});
     if (error) throw new Error(error);
   },
 
