@@ -125,13 +125,22 @@ const RolesManagement: React.FC = () => {
   });
 
   const updateRole = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) =>
-        roleService.updateRole(id, data),
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      // 1) update the role itself
+      const updated = await roleService.updateRole(id, data);
+
+      // 2) then update its permissions (if any were passed)
+      if (data.permissions && Array.isArray(data.permissions)) {
+        await permissionService.UpdateRolePermissions(id, data.permissions);
+      }
+
+      return updated;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['roles'] });
       setEditOpen(false);
       setSelectedRole(null);
-      toast({ title: 'Success', description: 'Role updated' });
+      toast({ title: 'Success', description: 'Role and permissions updated' });
     },
     onError: (err: any) => {
       toast({ title: 'Error', description: err.message, variant: 'destructive' });
@@ -188,7 +197,7 @@ const RolesManagement: React.FC = () => {
 
   // handle edit submit
   const onEdit = (values: RoleFormValues) => {
-    console.log(selectedRole);
+    console.log(values);
 
     if (!selectedRole) return;
     updateRole.mutate({ id: selectedRole.id, data: values });

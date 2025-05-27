@@ -1,3 +1,5 @@
+// src/contexts/ProjectContext.tsx
+
 import React, {
   createContext,
   useContext,
@@ -8,10 +10,9 @@ import React, {
 } from 'react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
-import { createApiUrl, API_CONFIG } from '@/config/api.config';
 import useAuthStore from '@/stores/authStore';
 import { Project } from '@/types/project';
-
+import { projectService } from '@/services/projectService';
 interface ProjectContextType {
   projects: Project[];
   selectedProject: Project | null;
@@ -26,7 +27,7 @@ const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
 export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const {
@@ -34,28 +35,19 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     refreshToken,
     isAuthenticated,
     loading: authLoading,
+    user,
     refreshTokens
   } = useAuthStore();
   const navigate = useNavigate();
 
-  // Memoized fetchProjects
   const fetchProjects = useCallback(async () => {
     if (!token) return;
     setLoading(true);
     setError(null);
 
     try {
-      const res = await fetch(
-          createApiUrl(API_CONFIG.ENDPOINTS.PROJECTS.USER_PROJECTS),
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            }
-          }
-      );
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data: Project[] = await res.json();
+      const userId = user?.id;
+      const data = await projectService.getProjects(userId);
       setProjects(data);
 
       // restore or pick selectedProject
@@ -76,7 +68,6 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   }, [token]);
 
-  // Run once when auth state resolves (login or silent refresh)
   useEffect(() => {
     if (isAuthenticated && token) {
       fetchProjects();

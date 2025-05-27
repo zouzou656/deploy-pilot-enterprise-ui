@@ -18,8 +18,7 @@ export const userService = {
   },
 
   async getUser(id: string): Promise<UserDetails> {
-    const url = createApiUrl(API_CONFIG.ENDPOINTS.USERS.GET, { id });
-    const { data, error } = await apiClient.get<UserDetails>(url);
+    const { data, error } = await apiClient.get<UserDetails>(API_CONFIG.ENDPOINTS.USERS.GET,{ params: { id } });
     if (error) throw new Error(error);
     return data!;
   },
@@ -34,15 +33,13 @@ export const userService = {
   },
 
   async updateUser(id: string, payload: UpdateUserDto): Promise<UserDetails> {
-    const url = createApiUrl(API_CONFIG.ENDPOINTS.USERS.UPDATE, { id });
-    const { data, error } = await apiClient.put<UserDetails>(url, payload);
+    const { data, error } = await apiClient.put<UserDetails>(API_CONFIG.ENDPOINTS.USERS.UPDATE, payload ,{ params: { id } });
     if (error) throw new Error(error);
     return data!;
   },
 
   async deleteUser(id: string): Promise<void> {
-    const url = createApiUrl(API_CONFIG.ENDPOINTS.USERS.DELETE, { id });
-    const { status, error } = await apiClient.delete<void>(url);
+    const { status, error } = await apiClient.delete<void>(API_CONFIG.ENDPOINTS.USERS.DELETE,{ params: { id } });
     if (status < 200 || status >= 300) throw new Error(error || `Delete failed: ${status}`);
   }
 };

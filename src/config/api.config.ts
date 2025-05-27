@@ -23,6 +23,7 @@ export const API_CONFIG = {
       ASSIGN_ROLE: '/api/auth/users/:id/roles/:roleId',
       REMOVE_ROLE: '/api/auth/users/:id/roles/:roleId',
       USER_PERMISSIONS: '/api/auth/permissions/user/:userId',
+      USER_EFFECTIVE_PERMISSIONS: '/api/auth/permissions/:userId/permissions',
       ADD_PERMISSION: '/api/auth/permissions/user/:userId/:permId',
       REMOVE_PERMISSION: '/api/auth/permissions/user/:userId/:permId',
     },

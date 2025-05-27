@@ -13,7 +13,33 @@ export interface UserDetails extends UserListItem {
   lastName?: string;
   permissions?: string[]; // Direct permissions not tied to roles
 }
+export interface CreateRoleDto {
+  name: string | null;
+  description: string | null;
+}
 
+export interface UpdateRoleDto {
+  name?: string | null;
+  description?: string | null;
+}
+export interface CreateUserDto {
+  email: string | null;
+  password: string | null;
+  username: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  role: string | null;
+  status: string | null;
+}
+
+export interface UpdateUserDto {
+  password?: string | null;
+  username?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  role?: string | null;
+  status?: string | null;
+}
 export interface CreateUserPayload {
   email: string;
   password: string;
