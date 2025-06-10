@@ -1,15 +1,14 @@
 
-// Project Management Types
 export interface Project {
   id: string;
   name: string;
   description?: string;
   gitRepoUrl: string;
   gitUsername?: string;
-  gitPassword?: string; // This would be securely stored
+  gitPassword?: string;
+  createdBy: string;
   createdAt: string;
   updatedAt: string;
-  createdBy: string;
 }
 
 export interface ProjectEnvironment {
@@ -18,8 +17,22 @@ export interface ProjectEnvironment {
   name: string;
   host: string;
   port: number;
-  username: string;
-  password?: string; // This would be securely stored
+  username?: string;
+  password?: string;
+  deploymentChannel?: string;
+  isProduction: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Environment {
+  id: string;
+  projectId: string;
+  name: string;
+  host: string;
+  port: number;
+  username?: string;
+  password?: string;
   deploymentChannel?: string;
   isProduction: boolean;
   createdAt: string;
@@ -32,31 +45,27 @@ export interface FileOverride {
   filePath: string;
   fileType: 'BIX' | 'PROXY';
   content: string;
+  createdBy: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface CreateProjectDto {
+  name: string;
+  description?: string;
+  gitRepoUrl: string;
+  gitUsername?: string;
+  gitPassword?: string;
   createdBy: string;
 }
 
-export interface ProjectUser {
+export interface CreateEnvironmentDto {
   projectId: string;
-  userId: string;
-  role: 'ADMIN' | 'DEVELOPER' | 'VIEWER';
-}
-
-export interface ProjectEnvironmentUser {
-  environmentId: string;
-  userId: string;
-  canManageOverrides: boolean;
-}
-
-export interface JarGenerationPayload {
-  projectId: string;
-  branch: string;
-  version: string;
-  environmentId: string;
-  strategy: 'commit' | 'full' | 'manual';
-  baseSha?: string;
-  headSha?: string;
-  applyOverrides: boolean;
-  files: { filename: string; status: string }[];
+  name: string;
+  host: string;
+  port: number;
+  username?: string;
+  password?: string;
+  deploymentChannel?: string;
+  isProduction: boolean;
 }

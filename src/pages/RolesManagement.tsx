@@ -1,529 +1,213 @@
-// src/pages/RolesManagement.tsx
+
 import React, { useState, useEffect } from 'react';
-import {
-  useQuery,
-  useMutation,
-  useQueryClient
-} from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { roleService } from '@/services/roleService';
 import { permissionService } from '@/services/permissionService';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Edit, Trash2, Shield } from 'lucide-react';
-import { useForm } from 'react-hook-form';
-import { z } from 'zod';
-import { zodResolver } from '@hookform/resolvers/zod';
+import { Plus, Search, ChevronDown, ChevronRight, settings as SettingsIcon, Shield } from 'lucide-react';
 
 import PageHeader from '@/components/ui-custom/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  CardFooter
-} from '@/components/ui/card';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter
-} from '@/components/ui/dialog';
-import {
-  Form,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormControl,
-  FormDescription,
-  FormMessage
-} from '@/components/ui/form';
-import { Checkbox } from '@/components/ui/checkbox';
-import {
-  AlertDialog,
-  AlertDialogContent,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogCancel,
-  AlertDialogAction
-} from '@/components/ui/alert-dialog';
-import { Textarea } from '@/components/ui/textarea';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 import useAuthStore, { PERMISSIONS } from '@/stores/authStore';
 import { Role, Permission } from '@/types/rbac';
-
-// validation schema
-const roleFormSchema = z.object({
-  name: z.string().min(2, { message: 'Role name must be at least 2 characters' }),
-  description: z.string().optional(),
-  permissions: z.array(z.string()).min(1, { message: 'Select at least one permission' })
-});
-type RoleFormValues = z.infer<typeof roleFormSchema>;
 
 const RolesManagement: React.FC = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { hasPermission } = useAuthStore();
 
-  // dialog state
-  const [isCreateOpen, setCreateOpen] = useState(false);
-  const [isEditOpen, setEditOpen]     = useState(false);
-  const [isDeleteOpen, setDeleteOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'roles' | 'permissions'>('roles');
+  const [roleSearch, setRoleSearch] = useState('');
+  const [permissionSearch, setPermissionSearch] = useState('');
+  const [rolesOpen, setRolesOpen] = useState(true);
+  const [permissionsOpen, setPermissionsOpen] = useState(false);
 
-  // search state for main list & permission dialogs
-  const [search, setSearch]                   = useState('');
-  const [createPermSearch, setCreatePermSearch] = useState('');
-  const [editPermSearch, setEditPermSearch]     = useState('');
-
-  // selected role for edit/delete
-  const [selectedRole, setSelectedRole] = useState<Role | null>(null);
-
-  // 1) fetch all roles
+  // Fetch data
   const { data: roles = [], isLoading: loadingRoles } = useQuery({
     queryKey: ['roles'],
     queryFn: roleService.getRoles,
   });
 
-  // 2) fetch all permissions
   const { data: allPerms = [] } = useQuery({
     queryKey: ['permissions'],
     queryFn: permissionService.getPermissions,
   });
 
-  // 3) fetch selected role's permissions only when editing
-  const {
-    data: rolePerms = [],
-    isLoading: loadingRolePerms
-  } = useQuery({
-    queryKey: ['rolePerms', selectedRole?.id],
-    queryFn: () => permissionService.getPermissionsForRole(selectedRole!.id),
-    enabled: Boolean(selectedRole) && isEditOpen,
-  });
+  // Filter data
+  const filteredRoles = roles.filter(r =>
+    r.name.toLowerCase().includes(roleSearch.toLowerCase()) ||
+    (r.description || '').toLowerCase().includes(roleSearch.toLowerCase())
+  );
 
-  // group permissions by group name
-  const permissionGroups = allPerms.reduce<Record<string, Permission[]>>((acc, p) => {
+  const filteredPermissions = allPerms.filter(p =>
+    p.name.toLowerCase().includes(permissionSearch.toLowerCase()) ||
+    p.description.toLowerCase().includes(permissionSearch.toLowerCase()) ||
+    p.group.toLowerCase().includes(permissionSearch.toLowerCase())
+  );
+
+  // Group permissions by group name
+  const permissionGroups = filteredPermissions.reduce<Record<string, Permission[]>>((acc, p) => {
     (acc[p.group] ||= []).push(p);
     return acc;
   }, {});
 
-  // mutations
-  const createRole = useMutation({
-    mutationFn: roleService.createRole,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['roles'] });
-      setCreateOpen(false);
-      toast({ title: 'Success', description: 'Role created' });
-    },
-    onError: (err: any) => {
-      toast({ title: 'Error', description: err.message, variant: 'destructive' });
-    }
-  });
-
-  const updateRole = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: any }) => {
-      // 1) update the role itself
-      const updated = await roleService.updateRole(id, data);
-
-      // 2) then update its permissions (if any were passed)
-      if (data.permissions && Array.isArray(data.permissions)) {
-        await permissionService.UpdateRolePermissions(id, data.permissions);
-      }
-
-      return updated;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['roles'] });
-      setEditOpen(false);
-      setSelectedRole(null);
-      toast({ title: 'Success', description: 'Role and permissions updated' });
-    },
-    onError: (err: any) => {
-      toast({ title: 'Error', description: err.message, variant: 'destructive' });
-    }
-  });
-
-  const deleteRole = useMutation({
-    mutationFn: (id: string) => roleService.deleteRole(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['roles'] });
-      setDeleteOpen(false);
-      setSelectedRole(null);
-      toast({ title: 'Success', description: 'Role deleted' });
-    },
-    onError: (err: any) => {
-      toast({ title: 'Error', description: err.message, variant: 'destructive' });
-    }
-  });
-
-  // forms
-  const createForm = useForm<RoleFormValues>({
-    resolver: zodResolver(roleFormSchema),
-    defaultValues: { name: '', description: '', permissions: [] }
-  });
-  const editForm = useForm<RoleFormValues>({
-    resolver: zodResolver(roleFormSchema),
-    defaultValues: { name: '', description: '', permissions: [] }
-  });
-
-  // handle create
-  const onCreate = (values: RoleFormValues) => {
-    createRole.mutate(values);
-    createForm.reset();
-    setCreatePermSearch('');
-  };
-
-  // open edit dialog
-  const onStartEdit = (role: Role) => {
-    setSelectedRole(role);
-    setEditOpen(true);
-  };
-
-  // when permissions load, populate edit form
-  useEffect(() => {
-    if (selectedRole && rolePerms) {
-      editForm.reset({
-        name: selectedRole.name,
-        description: selectedRole.description || '',
-        permissions: rolePerms.map(p => p.id)
-      });
-      setEditPermSearch('');
-    }
-  }, [selectedRole, rolePerms, editForm]);
-
-  // handle edit submit
-  const onEdit = (values: RoleFormValues) => {
-    console.log(values);
-
-    if (!selectedRole) return;
-    updateRole.mutate({ id: selectedRole.id, data: values });
-  };
-
-  // open delete dialog
-  const onStartDelete = (role: Role) => {
-    setSelectedRole(role);
-    setDeleteOpen(true);
-  };
-
-  // filter roles list
-  const filteredRoles = roles.filter(r =>
-      r.name.toLowerCase().includes(search.toLowerCase())
-  );
-
-  // helpers for permission counts
-  const totalPerms = () => rolePerms.length;
-  const countInGroup = (grp: string) =>
-      rolePerms.filter(p => permissionGroups[grp]?.some(x => x.id === p.id)).length;
-
-  // permission checks
   const canCreate = hasPermission(PERMISSIONS.ROLE_CREATE);
-  const canEdit   = hasPermission(PERMISSIONS.ROLE_UPDATE);
-  const canDelete = hasPermission(PERMISSIONS.ROLE_DELETE);
+  const canEdit = hasPermission(PERMISSIONS.ROLE_UPDATE);
 
   return (
-      <div className="space-y-6">
-        <PageHeader title="Role Management" description="Define roles and their permissions" />
+    <div className="space-y-4">
+      <PageHeader 
+        title="Role Management" 
+        description="Define roles and manage permissions"
+      />
 
-        <div className="flex justify-between items-center">
-          <Input
-              placeholder="Search roles..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="max-w-sm"
-          />
-          {canCreate && (
-              <Button onClick={() => setCreateOpen(true)}>
-                <Plus className="mr-2 h-4 w-4" /> Add Role
-              </Button>
-          )}
-        </div>
+      <Tabs value={activeTab} onValueChange={(value: string) => setActiveTab(value as any)} className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="roles">Roles</TabsTrigger>
+          <TabsTrigger value="permissions">Permissions</TabsTrigger>
+        </TabsList>
 
-        {loadingRoles ? (
-            <div className="text-center py-8">Loading roles…</div>
-        ) : filteredRoles.length === 0 ? (
-            <div className="text-center py-8">No roles found</div>
-        ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredRoles.map(role => (
-                  <Card key={role.id}>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Shield className="h-5 w-5" /> {role.name}
-                      </CardTitle>
-                      <CardDescription>{role.description || 'No description'}</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="font-medium mb-2 text-sm">
-                        {selectedRole?.id === role.id ? `Permissions (${totalPerms()})` : 'Permissions hidden'}
-                      </p>
-                    </CardContent>
-                    <CardFooter className="flex justify-end gap-2">
-                      {canEdit && (
-                          <Button variant="outline" size="sm" onClick={() => onStartEdit(role)}>
-                            <Edit className="h-4 w-4 mr-1" /> Edit
-                          </Button>
-                      )}
-                      {canDelete && (
-                          <Button
-                              variant="outline"
-                              size="sm"
-                              className="text-red-600 hover:text-red-700"
-                              onClick={() => onStartDelete(role)}
-                          >
-                            <Trash2 className="h-4 w-4 mr-1" /> Delete
-                          </Button>
-                      )}
-                    </CardFooter>
-                  </Card>
-              ))}
-            </div>
-        )}
-
-        {/* Create Role Dialog */}
-        <Dialog open={isCreateOpen} onOpenChange={() => { setCreateOpen(false); setCreatePermSearch(''); }}>
-          <DialogContent className="sm:max-w-[600px]">
-            <DialogHeader>
-              <DialogTitle>Create Role</DialogTitle>
-              <DialogDescription>Define a new role and assign permissions.</DialogDescription>
-            </DialogHeader>
-            <Form {...createForm}>
-              <form onSubmit={createForm.handleSubmit(onCreate)} className="space-y-4 py-2">
-                <FormField
-                    control={createForm.control}
-                    name="name"
-                    render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Name</FormLabel>
-                          <FormControl><Input {...field} /></FormControl>
-                          <FormMessage />
-                        </FormItem>
+        <TabsContent value="roles" className="space-y-4">
+          <Collapsible open={rolesOpen} onOpenChange={setRolesOpen}>
+            <Card>
+              <CollapsibleTrigger asChild>
+                <CardHeader className="cursor-pointer hover:bg-muted/50">
+                  <CardTitle className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Shield className="h-5 w-5" />
+                      Roles ({filteredRoles.length})
+                    </div>
+                    {rolesOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                  </CardTitle>
+                </CardHeader>
+              </CollapsibleTrigger>
+              
+              <CollapsibleContent>
+                <CardContent className="space-y-4">
+                  <div className="flex justify-between items-center gap-4">
+                    <div className="relative flex-1 max-w-sm">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Search roles..."
+                        value={roleSearch}
+                        onChange={(e) => setRoleSearch(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
+                    {canCreate && (
+                      <Button size="sm">
+                        <Plus className="mr-2 h-4 w-4" /> Add Role
+                      </Button>
                     )}
-                />
-                <FormField
-                    control={createForm.control}
-                    name="description"
-                    render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Description</FormLabel>
-                          <FormControl><Textarea {...field} /></FormControl>
-                          <FormMessage />
-                        </FormItem>
-                    )}
-                />
-                <FormField
-                    control={createForm.control}
-                    name="permissions"
-                    render={({ field }) => {
-                      const visibleIds = allPerms
-                          .filter(p => p.name.toLowerCase().includes(createPermSearch.toLowerCase()))
-                          .map(p => p.id);
+                  </div>
 
-                      return (
-                          <FormItem>
-                            <FormLabel>Permissions</FormLabel>
-                            <FormDescription>
-                              <div className="flex items-center justify-between">
-                                <Input
-                                    placeholder="Search permissions..."
-                                    value={createPermSearch}
-                                    onChange={e => setCreatePermSearch(e.target.value)}
-                                    className="max-w-xs"
-                                />
-                                <div className="space-x-1">
-                                  <Button size="sm" variant="ghost" onClick={() => field.onChange(visibleIds)}>
-                                    Select all
-                                  </Button>
-                                  <Button size="sm" variant="ghost" onClick={() => field.onChange([])}>
-                                    Clear all
-                                  </Button>
-                                </div>
-                              </div>
-                            </FormDescription>
-                            <div className="max-h-64 overflow-y-auto border rounded-md p-4 space-y-6">
-                              {Object.entries(permissionGroups).map(([grp, perms]) => {
-                                const permsToShow = perms.filter(p =>
-                                    p.name.toLowerCase().includes(createPermSearch.toLowerCase())
-                                );
-                                if (!permsToShow.length) return null;
-                                return (
-                                    <div key={grp}>
-                                      <h4 className="font-medium text-sm mb-2">{grp}</h4>
-                                      <div className="space-y-2">
-                                        {permsToShow.map(p => (
-                                            <div key={p.id} className="flex items-start space-x-2">
-                                              <Checkbox
-                                                  checked={field.value.includes(p.id)}
-                                                  onCheckedChange={checked => {
-                                                    const next = checked
-                                                        ? [...field.value, p.id]
-                                                        : field.value.filter(id => id !== p.id);
-                                                    field.onChange(next);
-                                                  }}
-                                              />
-                                              <div>
-                                                <p className="text-sm">{p.name}</p>
-                                                <p className="text-xs text-muted-foreground">{p.description}</p>
-                                              </div>
-                                            </div>
-                                        ))}
-                                      </div>
-                                    </div>
-                                );
-                              })}
-                            </div>
-                            <FormMessage />
-                          </FormItem>
-                      );
-                    }}
-                />
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => { setCreateOpen(false); setCreatePermSearch(''); }}>Cancel</Button>
-                  <Button type="submit" disabled={createRole.isPending}>
-                    {createRole.isPending ? 'Creating…' : 'Create'}
-                  </Button>
-                </DialogFooter>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
-
-        {/* Edit Role Dialog */}
-        <Dialog open={isEditOpen} onOpenChange={() => { setEditOpen(false); setSelectedRole(null); setEditPermSearch(''); }}>
-          <DialogContent className="sm:max-w-[600px]">
-            <DialogHeader>
-              <DialogTitle>Edit Role</DialogTitle>
-              <DialogDescription>Edit name, description, and permissions.</DialogDescription>
-            </DialogHeader>
-            <Form {...editForm}>
-              <form onSubmit={editForm.handleSubmit(onEdit)} className="space-y-4 py-2">
-                <FormField
-                    control={editForm.control}
-                    name="name"
-                    render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Name</FormLabel>
-                          <FormControl><Input {...field} /></FormControl>
-                          <FormMessage />
-                        </FormItem>
-                    )}
-                />
-                <FormField
-                    control={editForm.control}
-                    name="description"
-                    render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Description</FormLabel>
-                          <FormControl><Textarea {...field} /></FormControl>
-                          <FormMessage />
-                        </FormItem>
-                    )}
-                />
-                <FormField
-                    control={editForm.control}
-                    name="permissions"
-                    render={({ field }) => {
-                      const visibleIds = allPerms
-                          .filter(p => p.name.toLowerCase().includes(editPermSearch.toLowerCase()))
-                          .map(p => p.id);
-
-                      return (
-                          <FormItem>
-                            <FormLabel>Permissions</FormLabel>
-                            <FormDescription>
-                              <div className="flex items-center justify-between">
-                                <Input
-                                    placeholder="Search permissions..."
-                                    value={editPermSearch}
-                                    onChange={e => setEditPermSearch(e.target.value)}
-                                    className="max-w-xs"
-                                />
-                                <div className="space-x-1">
-                                  <Button size="sm" variant="ghost" onClick={() => field.onChange(visibleIds)}>
-                                    Select all
-                                  </Button>
-                                  <Button size="sm" variant="ghost" onClick={() => field.onChange([])}>
-                                    Clear all
-                                  </Button>
-                                </div>
-                              </div>
-                            </FormDescription>
-                            {loadingRolePerms ? (
-                                <div className="text-center py-4">Loading permissions…</div>
-                            ) : (
-                                <div className="max-h-64 overflow-y-auto border rounded-md p-4 space-y-6">
-                                  {Object.entries(permissionGroups).map(([grp, perms]) => {
-                                    const permsToShow = perms.filter(p =>
-                                        p.name.toLowerCase().includes(editPermSearch.toLowerCase())
-                                    );
-                                    if (!permsToShow.length) return null;
-                                    return (
-                                        <div key={grp}>
-                                          <h4 className="font-medium text-sm mb-2">{grp}</h4>
-                                          <div className="space-y-2">
-                                            {permsToShow.map(p => (
-                                                <div key={p.id} className="flex items-start space-x-2">
-                                                  <Checkbox
-                                                      checked={field.value.includes(p.id)}
-                                                      onCheckedChange={checked => {
-                                                        const next = checked
-                                                            ? [...field.value, p.id]
-                                                            : field.value.filter(id => id !== p.id);
-                                                        field.onChange(next);
-                                                      }}
-                                                  />
-                                                  <div>
-                                                    <p className="text-sm">{p.name}</p>
-                                                    <p className="text-xs text-muted-foreground">{p.description}</p>
-                                                  </div>
-                                                </div>
-                                            ))}
-                                          </div>
-                                        </div>
-                                    );
-                                  })}
-                                </div>
+                  {loadingRoles ? (
+                    <div className="text-center py-8 text-muted-foreground">Loading roles...</div>
+                  ) : filteredRoles.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">No roles found</div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {filteredRoles.map(role => (
+                        <Card key={role.id} className="hover:shadow-md transition-shadow">
+                          <CardHeader className="pb-3">
+                            <CardTitle className="flex items-center gap-2 text-base">
+                              <Shield className="h-4 w-4 text-primary" />
+                              {role.name}
+                            </CardTitle>
+                            {role.description && (
+                              <p className="text-sm text-muted-foreground">{role.description}</p>
                             )}
-                            <FormMessage />
-                          </FormItem>
-                      );
-                    }}
-                />
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => { setEditOpen(false); setSelectedRole(null); setEditPermSearch(''); }}>Cancel</Button>
-                  <Button type="submit" disabled={updateRole.isPending}>
-                    {updateRole.isPending ? 'Saving…' : 'Save Changes'}
-                  </Button>
-                </DialogFooter>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="space-y-3">
+                              <div className="text-sm text-muted-foreground">
+                                Click to view permissions
+                              </div>
+                              {canEdit && (
+                                <div className="flex gap-2">
+                                  <Button variant="outline" size="sm" className="flex-1">
+                                    Edit
+                                  </Button>
+                                  <Button variant="outline" size="sm" className="text-destructive hover:text-destructive">
+                                    Delete
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </CollapsibleContent>
+            </Card>
+          </Collapsible>
+        </TabsContent>
 
-        {/* Delete Confirmation */}
-        <AlertDialog open={isDeleteOpen} onOpenChange={() => { setDeleteOpen(false); setSelectedRole(null); }}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Confirm Delete</AlertDialogTitle>
-              <AlertDialogDescription>
-                Delete role “<strong>{selectedRole?.name}</strong>”? This cannot be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                  className="bg-red-600 hover:bg-red-700"
-                  onClick={() => selectedRole && deleteRole.mutate(selectedRole.id)}
-              >
-                {deleteRole.isPending ? 'Deleting…' : 'Delete'}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </div>
+        <TabsContent value="permissions" className="space-y-4">
+          <Collapsible open={permissionsOpen} onOpenChange={setPermissionsOpen}>
+            <Card>
+              <CollapsibleTrigger asChild>
+                <CardHeader className="cursor-pointer hover:bg-muted/50">
+                  <CardTitle className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <SettingsIcon className="h-5 w-5" />
+                      Permissions ({filteredPermissions.length})
+                    </div>
+                    {permissionsOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                  </CardTitle>
+                </CardHeader>
+              </CollapsibleTrigger>
+              
+              <CollapsibleContent>
+                <CardContent className="space-y-4">
+                  <div className="relative max-w-sm">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search permissions..."
+                      value={permissionSearch}
+                      onChange={(e) => setPermissionSearch(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+
+                  {Object.entries(permissionGroups).length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">No permissions found</div>
+                  ) : (
+                    <div className="space-y-6">
+                      {Object.entries(permissionGroups).map(([group, perms]) => (
+                        <Card key={group} className="border-l-4 border-l-primary/20">
+                          <CardHeader className="pb-3">
+                            <CardTitle className="text-lg">{group}</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              {perms.map(permission => (
+                                <div key={permission.id} className="flex flex-col p-3 bg-muted/30 rounded-lg">
+                                  <h4 className="font-medium text-sm">{permission.name}</h4>
+                                  <p className="text-xs text-muted-foreground mt-1">{permission.description}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </CollapsibleContent>
+            </Card>
+          </Collapsible>
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 };
 
