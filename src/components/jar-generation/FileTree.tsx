@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { ChevronDown, ChevronRight, Folder, FolderOpen, File, CheckSquare, Square } from 'lucide-react';
+import { ChevronDown, ChevronRight, Folder, FolderOpen, File, CheckSquare, Square, FolderPlus } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
@@ -28,17 +28,19 @@ type TreeViewProps = {
   onToggle: (path: string) => void;
   selected: string[];
   toggleFile: (path: string) => void;
+  toggleFolder?: (path: string) => void;
   onHighlight: (fe: FileEntry) => void;
   level?: number;
 };
 
-// Enhanced tree view with better styling
+// Enhanced tree view with folder selection support
 export const TreeView = ({
   nodes,
   expanded,
   onToggle,
   selected,
   toggleFile,
+  toggleFolder,
   onHighlight,
   level = 0,
 }: TreeViewProps) => {
@@ -55,8 +57,31 @@ export const TreeView = ({
     }
   };
 
+  const getFolderSelectionState = (node: TreeNode) => {
+    if (node.isFile) return null;
+    
+    const getAllFilesInFolder = (folderNode: TreeNode): string[] => {
+      let files: string[] = [];
+      folderNode.children.forEach(child => {
+        if (child.isFile) {
+          files.push(child.path);
+        } else {
+          files = files.concat(getAllFilesInFolder(child));
+        }
+      });
+      return files;
+    };
+
+    const filesInFolder = getAllFilesInFolder(node);
+    const selectedFilesInFolder = filesInFolder.filter(f => selected.includes(f));
+    
+    if (selectedFilesInFolder.length === 0) return 'none';
+    if (selectedFilesInFolder.length === filesInFolder.length) return 'all';
+    return 'partial';
+  };
+
   return (
-    <ul className={cn("space-y-1", level > 0 && "ml-6 border-l border-gray-200 dark:border-gray-700 pl-4")}>
+    <ul className={cn("space-y-1", level > 0 && "ml-4 border-l border-gray-200 dark:border-gray-700 pl-3")}>
       {nodes.map((node) => (
         <li key={node.path}>
           {node.isFile ? (
@@ -96,29 +121,52 @@ export const TreeView = ({
             </div>
           ) : (
             <div>
-              <div
-                className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted/50 cursor-pointer group transition-all duration-200"
-                onClick={() => onToggle(node.path)}
-              >
-                {expanded.has(node.path) ? (
-                  <ChevronDown className="h-4 w-4 text-gray-500 group-hover:text-gray-700 dark:group-hover:text-gray-300" />
-                ) : (
-                  <ChevronRight className="h-4 w-4 text-gray-500 group-hover:text-gray-700 dark:group-hover:text-gray-300" />
-                )}
+              <div className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted/50 group transition-all duration-200">
+                <button
+                  className="flex items-center gap-2 flex-1 min-w-0"
+                  onClick={() => onToggle(node.path)}
+                >
+                  {expanded.has(node.path) ? (
+                    <ChevronDown className="h-4 w-4 text-gray-500 group-hover:text-gray-700 dark:group-hover:text-gray-300 shrink-0" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4 text-gray-500 group-hover:text-gray-700 dark:group-hover:text-gray-300 shrink-0" />
+                  )}
+                  
+                  {expanded.has(node.path) ? (
+                    <FolderOpen className="h-4 w-4 text-blue-500 shrink-0" />
+                  ) : (
+                    <Folder className="h-4 w-4 text-blue-500 shrink-0" />
+                  )}
+                  
+                  <span className="font-medium text-sm group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate">
+                    {node.name}
+                  </span>
+                </button>
                 
-                {expanded.has(node.path) ? (
-                  <FolderOpen className="h-4 w-4 text-blue-500" />
-                ) : (
-                  <Folder className="h-4 w-4 text-blue-500" />
-                )}
-                
-                <span className="font-medium text-sm group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                  {node.name}
-                </span>
-                
-                <span className="text-xs text-muted-foreground ml-auto">
-                  {node.children.filter(c => c.isFile).length} files
-                </span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-xs text-muted-foreground">
+                    {node.children.filter(c => c.isFile).length} files
+                  </span>
+                  
+                  {toggleFolder && (
+                    <button
+                      onClick={() => toggleFolder(node.path)}
+                      className="p-1 rounded hover:bg-muted transition-colors"
+                      title="Select/deselect all files in this folder"
+                    >
+                      {(() => {
+                        const selectionState = getFolderSelectionState(node);
+                        if (selectionState === 'all') {
+                          return <CheckSquare className="h-4 w-4 text-green-600" />;
+                        } else if (selectionState === 'partial') {
+                          return <Square className="h-4 w-4 text-amber-600 fill-current opacity-50" />;
+                        } else {
+                          return <FolderPlus className="h-4 w-4 text-gray-400 hover:text-gray-600" />;
+                        }
+                      })()}
+                    </button>
+                  )}
+                </div>
               </div>
               
               {expanded.has(node.path) && (
@@ -128,6 +176,7 @@ export const TreeView = ({
                   onToggle={onToggle}
                   selected={selected}
                   toggleFile={toggleFile}
+                  toggleFolder={toggleFolder}
                   onHighlight={onHighlight}
                   level={level + 1}
                 />
@@ -146,17 +195,19 @@ type FileTreeProps = {
   setExpanded: React.Dispatch<React.SetStateAction<Set<string>>>;
   selectedFiles: string[];
   toggleFile: (path: string) => void;
+  toggleFolder?: (path: string) => void;
   onHighlight: (fe: FileEntry) => void;
   filesToShow: FileEntry[];
 };
 
-// Enhanced file tree with better controls
+// Enhanced file tree with folder selection controls
 const FileTree = ({ 
   treeData,
   expanded,
   setExpanded,
   selectedFiles,
   toggleFile,
+  toggleFolder,
   onHighlight,
   filesToShow
 }: FileTreeProps) => {
@@ -201,17 +252,17 @@ const FileTree = ({
   };
 
   return (
-    <div className="space-y-4">
-      {/* Enhanced Controls */}
-      <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-muted/30 rounded-lg">
+    <div className="space-y-3">
+      {/* Compact Controls */}
+      <div className="flex flex-wrap items-center justify-between gap-2 p-3 bg-muted/30 rounded-lg">
         <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline" onClick={expandAll} className="h-8">
-            <FolderOpen className="h-4 w-4 mr-2" />
+          <Button size="sm" variant="outline" onClick={expandAll} className="h-7 text-xs">
+            <FolderOpen className="h-3 w-3 mr-1" />
             Expand All
           </Button>
-          <Button size="sm" variant="outline" onClick={collapseAll} className="h-8">
-            <Folder className="h-4 w-4 mr-2" />
-            Collapse All
+          <Button size="sm" variant="outline" onClick={collapseAll} className="h-7 text-xs">
+            <Folder className="h-3 w-3 mr-1" />
+            Collapse
           </Button>
         </div>
         
@@ -221,9 +272,9 @@ const FileTree = ({
             variant="outline"
             onClick={selectAll}
             disabled={selectedFiles.length === filesToShow.length}
-            className="h-8"
+            className="h-7 text-xs"
           >
-            <CheckSquare className="h-4 w-4 mr-2" />
+            <CheckSquare className="h-3 w-3 mr-1" />
             Select All
           </Button>
           <Button 
@@ -231,9 +282,9 @@ const FileTree = ({
             variant="outline" 
             onClick={clearSelection}
             disabled={selectedFiles.length === 0}
-            className="h-8"
+            className="h-7 text-xs"
           >
-            <Square className="h-4 w-4 mr-2" />
+            <Square className="h-3 w-3 mr-1" />
             Clear
           </Button>
         </div>
@@ -241,7 +292,7 @@ const FileTree = ({
 
       {/* File Tree */}
       <div className="border rounded-lg bg-white dark:bg-gray-950">
-        <ScrollArea className="h-96 p-4">
+        <ScrollArea className="h-80 p-3">
           {treeData.length > 0 ? (
             <TreeView
               nodes={treeData}
@@ -249,6 +300,7 @@ const FileTree = ({
               onToggle={toggleExp}
               selected={selectedFiles}
               toggleFile={toggleFile}
+              toggleFolder={toggleFolder}
               onHighlight={onHighlight}
             />
           ) : (
@@ -261,15 +313,6 @@ const FileTree = ({
           )}
         </ScrollArea>
       </div>
-      
-      {/* Selection Summary */}
-      {selectedFiles.length > 0 && (
-        <div className="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-          <p className="text-sm text-blue-800 dark:text-blue-200">
-            <strong>{selectedFiles.length}</strong> files selected for deployment
-          </p>
-        </div>
-      )}
     </div>
   );
 };

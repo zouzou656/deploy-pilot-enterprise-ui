@@ -296,48 +296,48 @@ const jobId = crypto.randomUUID();
   return (
       <AuthGuard>
         <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
-          <div className="container mx-auto py-8 space-y-8">
-            {/* Enhanced Header */}
-            <div className="text-center space-y-4">
-              <div className="flex items-center justify-center gap-3 mb-4">
-                <div className="p-3 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full">
-                  <Package className="h-8 w-8 text-white" />
+          <div className="container mx-auto py-6 space-y-6 max-w-7xl">
+            {/* Compact Header */}
+            <div className="text-center space-y-3">
+              <div className="flex items-center justify-center gap-3 mb-3">
+                <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full">
+                  <Package className="h-6 w-6 text-white" />
                 </div>
-                <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                   JAR Generation Wizard
                 </h1>
               </div>
-              <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
                 Create deployment-ready JAR files with our intelligent build pipeline
               </p>
               
-              {/* Progress indicators */}
-              <div className="flex justify-center items-center gap-4 mt-6">
-                <Badge variant="outline" className="px-4 py-2">
-                  <Settings className="h-4 w-4 mr-2" />
+              {/* Compact Progress indicators */}
+              <div className="flex justify-center items-center gap-3 mt-4">
+                <Badge variant="outline" className="px-3 py-1">
+                  <Settings className="h-3 w-3 mr-1" />
                   Configure
                 </Badge>
-                <div className="h-px w-8 bg-border"></div>
-                <Badge variant="outline" className="px-4 py-2">
-                  <Code className="h-4 w-4 mr-2" />
+                <div className="h-px w-6 bg-border"></div>
+                <Badge variant="outline" className="px-3 py-1">
+                  <Code className="h-3 w-3 mr-1" />
                   Select Files
                 </Badge>
-                <div className="h-px w-8 bg-border"></div>
-                <Badge variant="outline" className="px-4 py-2">
-                  <Eye className="h-4 w-4 mr-2" />
+                <div className="h-px w-6 bg-border"></div>
+                <Badge variant="outline" className="px-3 py-1">
+                  <Eye className="h-3 w-3 mr-1" />
                   Preview
                 </Badge>
-                <div className="h-px w-8 bg-border"></div>
-                <Badge variant="outline" className="px-4 py-2">
-                  <Zap className="h-4 w-4 mr-2" />
+                <div className="h-px w-6 bg-border"></div>
+                <Badge variant="outline" className="px-3 py-1">
+                  <Zap className="h-3 w-3 mr-1" />
                   Generate
                 </Badge>
               </div>
             </div>
 
-            {/* Enhanced Pipeline Navigation */}
-            <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm dark:bg-gray-900/80">
-              <CardContent className="p-6">
+            {/* Compact Pipeline Navigation */}
+            <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm dark:bg-gray-900/80">
+              <CardContent className="p-4">
                 <PipelineNav 
                   currentStep={currentStep} 
                   onStepChange={setCurrentStep} 
@@ -346,10 +346,9 @@ const jobId = crypto.randomUUID();
               </CardContent>
             </Card>
 
-            {/* Main Content Area */}
+            {/* Main Content Area - Reduced padding */}
             <div className="relative">
-              {/* Animated background gradient */}
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-purple-500/5 rounded-3xl"></div>
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-purple-500/5 rounded-2xl"></div>
               
               <div className="relative z-10">
                 {currentStep === 'config' && (
@@ -428,34 +427,34 @@ const jobId = crypto.randomUUID();
               </div>
             </div>
 
-            {/* Enhanced Navigation Controls */}
-            <Card className="border-0 shadow-lg bg-white/90 backdrop-blur-sm dark:bg-gray-900/90">
-              <CardContent className="p-6">
+            {/* Compact Navigation Controls */}
+            <Card className="border-0 shadow-md bg-white/90 backdrop-blur-sm dark:bg-gray-900/90">
+              <CardContent className="p-4">
                 <div className="flex justify-between items-center">
                   {currentStep !== 'config' ? (
                       <Button
                           variant="outline"
-                          size="lg"
+                          size="default"
                           onClick={() => {
                             const steps: PipelineStep[] = ['config', 'files', 'preview', 'summary'];
                             const currentIndex = steps.indexOf(currentStep);
                             setCurrentStep(steps[Math.max(0, currentIndex - 1)]);
                           }}
-                          className="px-8"
+                          className="px-6"
                       >
                         Previous
                       </Button>
                   ) : <div></div>}
                   
                   {selectedFiles.length > 0 && (
-                    <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-full">
+                    <div className="flex items-center gap-2 px-3 py-1 bg-blue-50 dark:bg-blue-900/20 rounded-full">
                       <Badge variant="secondary">{selectedFiles.length} files selected</Badge>
                     </div>
                   )}
                   
                   {currentStep !== 'summary' && (
                       <Button
-                          size="lg"
+                          size="default"
                           onClick={() => {
                             const steps: PipelineStep[] = ['config', 'files', 'preview', 'summary'];
                             const currentIndex = steps.indexOf(currentStep);
@@ -473,7 +472,7 @@ const jobId = crypto.randomUUID();
                             setCurrentStep(nextStep);
                           }}
                           disabled={currentStep === 'files' && selectedFiles.length === 0}
-                          className="px-8 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
+                          className="px-6 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
                       >
                         Next Step
                       </Button>
