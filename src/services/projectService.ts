@@ -1,3 +1,4 @@
+
 import { apiClient } from './api.client';
 import { Project, CreateProjectDto, UpdateProjectDto } from '@/types/project';
 
@@ -7,6 +8,7 @@ export interface ProjectService {
   updateProject(id: string, project: UpdateProjectDto): Promise<Project>;
   deleteProject(id: string): Promise<void>;
   getUserProjects(userId: string): Promise<Project[]>;
+  getProjects(): Promise<Project[]>;
 }
 
 export const projectService: ProjectService = {
@@ -31,6 +33,11 @@ export const projectService: ProjectService = {
 
   async getUserProjects(userId: string): Promise<Project[]> {
     const response = await apiClient.get(`/projects/user/${userId}`);
+    return response.data;
+  },
+
+  async getProjects(): Promise<Project[]> {
+    const response = await apiClient.get('/projects');
     return response.data;
   }
 };
