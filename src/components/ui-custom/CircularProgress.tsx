@@ -147,7 +147,7 @@ export default function CircularProgress({
                     ) : (
                       <Clock className="h-4 w-4 text-gray-400" />
                     )}
-                    <span className={isCompleted ? 'text-green-700 dark:text-green-300' : ''}">
+                    <span className={isCompleted ? 'text-green-700 dark:text-green-300' : ''}>
                       {step}
                     </span>
                   </div>
