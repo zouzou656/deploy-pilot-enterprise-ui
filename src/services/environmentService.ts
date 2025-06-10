@@ -1,4 +1,3 @@
-
 import { apiClient } from '@/services/api.client';
 import { 
   Environment, 
@@ -56,5 +55,10 @@ export const environmentService = {
   async removeUserFromEnvironment(environmentId: string, userId: string): Promise<void> {
     const { error } = await apiClient.delete(`/api/environments/${environmentId}/users/${userId}`);
     if (error) throw new Error(error);
+  },
+
+  async getEnvironments(projectId: string): Promise<Environment[]> {
+    const response = await apiClient.get(`/environments/project/${projectId}`);
+    return response.data;
   }
 };

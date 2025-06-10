@@ -1,4 +1,3 @@
-
 import { apiClient } from '@/services/api.client';
 import { 
   FileOverride, 
@@ -28,5 +27,10 @@ export const fileOverrideService = {
   async deleteFileOverride(id: string): Promise<void> {
     const { error } = await apiClient.delete(`/api/file-overrides/${id}`);
     if (error) throw new Error(error);
+  },
+
+  async getFileOverrides(environmentId: string): Promise<FileOverride[]> {
+    const response = await apiClient.get(`/file-overrides/environment/${environmentId}`);
+    return response.data;
   }
 };

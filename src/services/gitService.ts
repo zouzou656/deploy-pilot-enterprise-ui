@@ -1,4 +1,3 @@
-
 import { apiClient } from '@/services/api.client';
 import { 
   GitApiParams, 
@@ -92,5 +91,40 @@ export const gitService = {
 
   async compareCommits(projectId: string, baseSha: string, headSha: string): Promise<CompareDto> {
     return this.compare({ projectId, baseSha, headSha });
+  },
+
+  async tree(projectId: string, branch: string): Promise<string[]> {
+    const response = await apiClient.get(`/git/${projectId}/tree/${branch}`);
+    return response.data;
+  },
+
+  async full(projectId: string, branch: string): Promise<FileEntry[]> {
+    const response = await apiClient.get(`/git/${projectId}/full/${branch}`);
+    return response.data;
+  },
+
+  async compare(projectId: string, baseSha: string, headSha: string): Promise<FileEntry[]> {
+    const response = await apiClient.get(`/git/${projectId}/compare/${baseSha}/${headSha}`);
+    return response.data;
+  },
+
+  async compareFiles(params: {
+    projectId: string;
+    baseSha: string;
+    headSha: string;
+    files: string[];
+  }): Promise<FileEntry[]> {
+    const response = await apiClient.post(`/git/${params.projectId}/compare-files`, {
+      baseSha: params.baseSha,
+      headSha: params.headSha,
+      files: params.files
+    });
+    return response.data;
   }
 };
+
+export interface FileEntry {
+  filename: string;
+  status: string;
+  patch?: string;
+}

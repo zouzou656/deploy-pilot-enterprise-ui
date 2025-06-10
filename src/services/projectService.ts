@@ -1,49 +1,36 @@
-import { apiClient } from '@/services/api.client';
+import { apiClient } from './api.client';
 import { Project, CreateProjectDto, UpdateProjectDto } from '@/types/project';
 
-export const projectService = {
-  async getProjects(): Promise<Project[]> {
-    const { data, error } = await apiClient.get<Project[]>('/api/projects');
-    if (error) throw new Error(error);
-    return data ?? [];
-  },
+export interface ProjectService {
+  createProject(project: CreateProjectDto): Promise<Project>;
+  getProject(id: string): Promise<Project>;
+  updateProject(id: string, project: UpdateProjectDto): Promise<Project>;
+  deleteProject(id: string): Promise<void>;
+  getUserProjects(userId: string): Promise<Project[]>;
+}
 
-  async getUserProjects(userId: string): Promise<Project[]> {
-    const { data, error } = await apiClient.get<Project[]>(`/api/projects/user/${userId}`);
-    if (error) throw new Error(error);
-    return data ?? [];
+export const projectService: ProjectService = {
+  async createProject(project: CreateProjectDto): Promise<Project> {
+    const response = await apiClient.post('/projects', project);
+    return response.data;
   },
 
   async getProject(id: string): Promise<Project> {
-    const { data, error } = await apiClient.get<Project>(`/api/projects/${id}`);
-    if (error) throw new Error(error);
-    return data!;
+    const response = await apiClient.get(`/projects/${id}`);
+    return response.data;
   },
 
-  async createProject(payload: CreateProjectDto): Promise<Project> {
-    const { data, error } = await apiClient.post<Project>('/api/projects', payload);
-    if (error) throw new Error(error);
-    return data!;
-  },
-
-  async updateProject(id: string, payload: UpdateProjectDto): Promise<Project> {
-    const { data, error } = await apiClient.put<Project>(`/api/projects/${id}`, payload);
-    if (error) throw new Error(error);
-    return data!;
+  async updateProject(id: string, project: UpdateProjectDto): Promise<Project> {
+    const response = await apiClient.put(`/projects/${id}`, project);
+    return response.data;
   },
 
   async deleteProject(id: string): Promise<void> {
-    const { error } = await apiClient.delete(`/api/projects/${id}`);
-    if (error) throw new Error(error);
+    await apiClient.delete(`/projects/${id}`);
   },
 
-  async assignUserToProject(projectId: string, userId: string): Promise<void> {
-    const { error } = await apiClient.post(`/api/projects/${projectId}/users/${userId}`, {});
-    if (error) throw new Error(error);
-  },
-
-  async removeUserFromProject(projectId: string, userId: string): Promise<void> {
-    const { error } = await apiClient.delete(`/api/projects/${projectId}/users/${userId}`);
-    if (error) throw new Error(error);
+  async getUserProjects(userId: string): Promise<Project[]> {
+    const response = await apiClient.get(`/projects/user/${userId}`);
+    return response.data;
   }
 };
