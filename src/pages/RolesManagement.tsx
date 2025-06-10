@@ -1,10 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { roleService } from '@/services/roleService';
 import { permissionService } from '@/services/permissionService';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Search, ChevronDown, ChevronRight, settings as SettingsIcon, Shield } from 'lucide-react';
+import { Plus, Search, ChevronDown, ChevronRight, Settings, Shield } from 'lucide-react';
 
 import PageHeader from '@/components/ui-custom/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -158,7 +157,7 @@ const RolesManagement: React.FC = () => {
                 <CardHeader className="cursor-pointer hover:bg-muted/50">
                   <CardTitle className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <SettingsIcon className="h-5 w-5" />
+                      <Settings className="h-5 w-5" />
                       Permissions ({filteredPermissions.length})
                     </div>
                     {permissionsOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}

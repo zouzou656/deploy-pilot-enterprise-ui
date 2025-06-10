@@ -5,7 +5,7 @@ import { userService } from "@/services/userService";
 import { roleService } from "@/services/roleService";
 import { permissionService } from "@/services/permissionService";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Search, ChevronDown, ChevronRight, users as UsersIcon, UserCog } from "lucide-react";
+import { Plus, Search, ChevronDown, ChevronRight, Users, UserCog } from "lucide-react";
 
 import PageHeader from "@/components/ui-custom/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -44,8 +44,8 @@ const UsersManagement: React.FC = () => {
     (u.lastName || '').toLowerCase().includes(userSearch.toLowerCase())
   );
 
-  const getRoleName = (rid: string) =>
-    roles.find((r) => r.id === rid)?.name ?? "Unknown";
+  const getRoleName = (roleId: string) =>
+    roles.find((r) => r.id === roleId)?.name ?? "Unknown";
 
   const canCreate = hasPermission(PERMISSIONS.USER_CREATE);
   const canEdit = hasPermission(PERMISSIONS.USER_UPDATE);
@@ -69,7 +69,7 @@ const UsersManagement: React.FC = () => {
             <CardHeader className="cursor-pointer hover:bg-muted/50">
               <CardTitle className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <UsersIcon className="h-5 w-5" />
+                  <Users className="h-5 w-5" />
                   Users ({filteredUsers.length})
                 </div>
                 {usersOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
@@ -139,13 +139,11 @@ const UsersManagement: React.FC = () => {
                         
                         <div className="space-y-2">
                           <div className="text-sm">
-                            <span className="font-medium">Roles:</span>
+                            <span className="font-medium">Role:</span>
                             <div className="flex flex-wrap gap-1 mt-1">
-                              {user.roleIds.map((rid) => (
-                                <Badge key={rid} variant="outline" className="text-xs">
-                                  {getRoleName(rid)}
-                                </Badge>
-                              ))}
+                              <Badge variant="outline" className="text-xs">
+                                {getRoleName(user.role)}
+                              </Badge>
                             </div>
                           </div>
                           

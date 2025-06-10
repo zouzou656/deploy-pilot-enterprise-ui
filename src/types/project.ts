@@ -69,3 +69,27 @@ export interface CreateEnvironmentDto {
   deploymentChannel?: string;
   isProduction: boolean;
 }
+
+export interface UpdateEnvironmentDto {
+  name?: string;
+  host?: string;
+  port?: number;
+  username?: string;
+  password?: string;
+  deploymentChannel?: string;
+  isProduction?: boolean;
+}
+
+export interface CreateFileOverrideDto {
+  environmentId: string;
+  filePath: string;
+  fileType: 'BIX' | 'PROXY';
+  content: string;
+  createdBy: string;
+}
+
+export interface UpdateFileOverrideDto {
+  filePath?: string;
+  fileType?: 'BIX' | 'PROXY';
+  content?: string;
+}
