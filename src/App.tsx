@@ -10,6 +10,7 @@ import Login from '@/pages/Login';
 import Dashboard from '@/pages/Dashboard';
 import ProjectManagement from '@/pages/ProjectManagement';
 import JarGeneration from '@/pages/JarGeneration';
+import JarStatusPage from '@/pages/JarStatusPage';
 import WeblogicDeployment from '@/pages/WeblogicDeployment';
 import LogsHistory from '@/pages/LogsHistory';
 import CodeExplorer from '@/pages/CodeExplorer';
