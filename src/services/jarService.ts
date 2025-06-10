@@ -1,20 +1,29 @@
+import { apiClient } from '@/services/api.client';
+import { API_CONFIG } from '@/config/api.config';
+import {
+  JarGenerationRequestDto,
+  JarGenerationResultDto,
+  JarStatusDto
+} from '@/types/jar';
 
-import { apiClient } from './api.client';
-import { JarGenerationRequestDto, JarGenerationResultDto, JarStatusDto } from '@/types/jar';
-
-export interface JarService {
-  generateJar(payload: JarGenerationRequestDto): Promise<JarGenerationResultDto>;
-  getStatus(jobId: string): Promise<JarStatusDto>;
-}
-
-export const jarService: JarService = {
-  async generateJar(payload: JarGenerationRequestDto): Promise<JarGenerationResultDto> {
-    const response = await apiClient.post('/jar/generate', payload);
-    return response.data;
+export const jarService = {
+  /**
+   * Calls POST /api/jar/generate and returns { jobId, status, createdAt }.
+   */
+  async generateJar(
+    payload: JarGenerationRequestDto
+  ): Promise<JarGenerationResultDto> {
+    const { data, error } = await apiClient.post<JarGenerationResultDto>(
+      API_CONFIG.ENDPOINTS.JAR.GENERATE,
+      payload
+    );
+    if (error) throw new Error(error);
+    return data!;
   },
 
-  async getStatus(jobId: string): Promise<JarStatusDto> {
-    const response = await apiClient.get(`/jar/status/${jobId}`);
-    return response.data;
+   async getStatus(jobId: string): Promise<JarStatusDto> {
+    const { data, error } = await apiClient.get<JarStatusDto>(API_CONFIG.ENDPOINTS.JAR.STATUS,{ params: { jobId} });
+    if (error) throw new Error(error);
+    return data!;
   }
 };

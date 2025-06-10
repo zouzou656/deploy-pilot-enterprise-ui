@@ -1,9 +1,10 @@
+// src/components/ui-custom/CodeEditor.tsx
 
 import React, { useState, useRef } from 'react';
-import { Editor } from '@monaco-editor/react';
+import { Editor, OnMount } from '@monaco-editor/react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Copy, Check, Code } from 'lucide-react';
+import { Copy, Check, Code, Maximize2, Minimize2 } from 'lucide-react';
 
 interface CodeEditorProps {
   value: string;
@@ -15,6 +16,8 @@ interface CodeEditorProps {
   showLineNumbers?: boolean;
   title?: string;
   tabs?: { value: string; label: string; content: string }[];
+  // New callback: parent can get the Monaco editor instance
+  onEditorMount?: (editor: any) => void;
 }
 
 const CodeEditor: React.FC<CodeEditorProps> = ({
@@ -27,30 +30,46 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
   showLineNumbers = true,
   title,
   tabs,
+  onEditorMount,
 }) => {
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState(tabs?.[0]?.value || 'main');
+  const [isExpanded, setIsExpanded] = useState(false);
   const editorRef = useRef<any>(null);
-  
-  const handleEditorMount = (editor: any) => {
+
+  // Called when Monaco editor mounts
+  const handleEditorMount: OnMount = (editor, monaco) => {
     editorRef.current = editor;
+    if (onEditorMount) {
+      onEditorMount(editor);
+    }
   };
 
+  // Copy to clipboard
   const handleCopy = () => {
-    const textToCopy = tabs 
+    const textToCopy = tabs
       ? tabs.find(tab => tab.value === activeTab)?.content || value
       : value;
-      
+
     navigator.clipboard.writeText(textToCopy);
     setCopied(true);
-    
-    setTimeout(() => {
-      setCopied(false);
-    }, 2000);
+    setTimeout(() => setCopied(false), 2000);
   };
-  
-  const handleTabChange = (value: string) => {
-    setActiveTab(value);
+
+  // Format document via Monaco
+  const handleFormat = () => {
+    if (editorRef.current) {
+      editorRef.current.getAction('editor.action.formatDocument').run();
+    }
+  };
+
+  // Toggle full‐screen
+  const handleExpandToggle = () => {
+    setIsExpanded(prev => !prev);
+  };
+
+  const handleTabChange = (val: string) => {
+    setActiveTab(val);
   };
 
   const renderEditor = (content: string, lang = language) => (
@@ -68,64 +87,169 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
         glyphMargin: false,
         folding: true,
         renderLineHighlight: 'line',
+        formatOnPaste: true,
+        formatOnType: true,
         scrollbar: {
           verticalScrollbarSize: 10,
           horizontalScrollbarSize: 10,
         },
       }}
-      onChange={(value) => onChange && onChange(value || '')}
+      onChange={(val) => onChange && onChange(val || '')}
       onMount={handleEditorMount}
     />
   );
 
   return (
-    <div className={`border rounded-md overflow-hidden ${className}`}>
-      <div className="bg-muted px-4 py-2 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Code className="h-4 w-4" />
-          <span className="font-medium">{title || (tabs ? 'Code Editor' : language.toUpperCase())}</span>
+    <>
+      {/* If expanded into full-screen, overlay a fixed container */}
+      {isExpanded && (
+        <div className="fixed inset-0 z-50 bg-white dark:bg-gray-900 flex flex-col">
+          <div className="flex items-center justify-between bg-gray-100 dark:bg-gray-800 px-4 py-2 border-b dark:border-gray-700">
+            <div className="flex items-center gap-2">
+              <Code className="h-4 w-4" />
+              <span className="font-medium">
+                {title || (tabs ? 'Code Editor' : language.toUpperCase())}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleFormat}
+                title="Format Document"
+              >
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleCopy}
+                title={copied ? 'Copied' : 'Copy to Clipboard'}
+              >
+                {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleExpandToggle}
+                title="Collapse Editor"
+              >
+                <Minimize2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-hidden">
+            {tabs ? (
+              <div className="h-full flex flex-col">
+                <div className="bg-gray-50 dark:bg-gray-700 border-b px-4">
+                  <Tabs
+                    value={activeTab}
+                    onValueChange={handleTabChange}
+                    className="w-full"
+                  >
+                    <TabsList className="bg-transparent h-10">
+                      {tabs.map(tab => (
+                        <TabsTrigger
+                          key={tab.value}
+                          value={tab.value}
+                          className="data-[state=active]:bg-background rounded-t-md rounded-b-none data-[state=active]:border-b-2 data-[state=active]:border-primary"
+                        >
+                          {tab.label}
+                        </TabsTrigger>
+                      ))}
+                    </TabsList>
+                  </Tabs>
+                </div>
+                <div className="flex-1 overflow-hidden">
+                  {tabs.map(tab => (
+                    <TabsContent
+                      key={tab.value}
+                      value={tab.value}
+                      className="mt-0 p-0 h-full"
+                    >
+                      {renderEditor(tab.content)}
+                    </TabsContent>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              renderEditor(value)
+            )}
+          </div>
         </div>
-        <Button variant="ghost" size="sm" onClick={handleCopy}>
-          {copied ? (
-            <>
-              <Check className="h-4 w-4 mr-1" />
-              <span>Copied</span>
-            </>
-          ) : (
-            <>
-              <Copy className="h-4 w-4 mr-1" />
-              <span>Copy</span>
-            </>
-          )}
-        </Button>
-      </div>
-      
-      {tabs ? (
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-          <div className="bg-muted/50 border-b px-4">
-            <TabsList className="bg-transparent h-10">
-              {tabs.map((tab) => (
-                <TabsTrigger
+      )}
+
+      {/* Normal (non-expanded) editor container */}
+      <div className={`border rounded-md overflow-hidden ${className}`}>
+        {/* Header bar */}
+        <div className="bg-gray-100 dark:bg-gray-800 px-4 py-2 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Code className="h-4 w-4" />
+            <span className="font-medium">
+              {title || (tabs ? 'Code Editor' : language.toUpperCase())}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleFormat}
+              title="Format Document"
+            >
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleCopy}
+              title={copied ? 'Copied' : 'Copy to Clipboard'}
+            >
+              {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleExpandToggle}
+              title="Expand Editor"
+            >
+              <Maximize2 className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
+        {tabs ? (
+          <div className="h-full flex flex-col">
+            <div className="bg-gray-50 dark:bg-gray-700 border-b px-4">
+              <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+                <TabsList className="bg-transparent h-10">
+                  {tabs.map(tab => (
+                    <TabsTrigger
+                      key={tab.value}
+                      value={tab.value}
+                      className="data-[state=active]:bg-background rounded-t-md rounded-b-none data-[state=active]:border-b-2 data-[state=active]:border-primary"
+                    >
+                      {tab.label}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </Tabs>
+            </div>
+            <div className="flex-1 overflow-hidden">
+              {tabs.map(tab => (
+                <TabsContent
                   key={tab.value}
                   value={tab.value}
-                  className="data-[state=active]:bg-background rounded-t-md rounded-b-none data-[state=active]:border-b-2 data-[state=active]:border-primary"
+                  className="mt-0 p-0 h-full"
                 >
-                  {tab.label}
-                </TabsTrigger>
+                  {renderEditor(tab.content)}
+                </TabsContent>
               ))}
-            </TabsList>
+            </div>
           </div>
-          
-          {tabs.map((tab) => (
-            <TabsContent key={tab.value} value={tab.value} className="mt-0 p-0">
-              {renderEditor(tab.content)}
-            </TabsContent>
-          ))}
-        </Tabs>
-      ) : (
-        renderEditor(value)
-      )}
-    </div>
+        ) : (
+          renderEditor(value)
+        )}
+      </div>
+    </>
   );
 };
 

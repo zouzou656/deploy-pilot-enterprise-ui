@@ -1,82 +1,82 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/router';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useToast } from "@/components/ui/use-toast"
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Button } from "@/components/ui/button"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { Project } from '@/types/project';
-import { projectService } from '@/services/projectService';
-import { gitService } from '@/services/gitService';
-import { environmentService } from '@/services/environmentService';
-import { Environment } from '@/types/project';
-import { FileEntry } from '@/components/jar-generation/FileTree';
-import { JarGenerationRequestDto } from '@/types/jar';
-import { jarService } from '@/services/jarService';
-import { v4 as uuidv4 } from 'uuid';
-import { Steps, Step } from '@/components/Steps';
-import ProjectSelectionStep from '@/components/jar-generation/ProjectSelectionStep';
-import GitConfigurationStep from '@/components/jar-generation/GitConfigurationStep';
-import ProjectDetailsStep from '@/components/jar-generation/ProjectDetailsStep';
-import TargetEnvironmentStep from '@/components/jar-generation/TargetEnvironmentStep';
+import { useToast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
+import { Settings, Zap, Package, Code, Eye } from 'lucide-react';
+import PageHeader from '@/components/ui-custom/PageHeader';
+import AuthGuard from '@/components/auth/AuthGuard';
+import PipelineNav, { PipelineStep } from '@/components/jar-generation/PipelineNav';
+import ConfigStep from '@/components/jar-generation/ConfigStep';
+import FileSelectionStep from '@/components/jar-generation/FileSelectionStep';
 import PreviewStep from '@/components/jar-generation/PreviewStep';
 import SummaryStep from '@/components/jar-generation/SummaryStep';
+import { buildTree, collectFolders } from '@/components/jar-generation/TreeUtils';
+import { FileEntry } from '@/components/jar-generation/FileTree';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 
-const EMPTY_PROJECT_ARRAY: Project[] = [];
-const EMPTY_ENVIRONMENT_ARRAY: Environment[] = [];
+import useAuthStore from '@/stores/authStore';
+import { Project, Environment, FileOverride } from '@/types/project';
+import { CommitDto } from '@/types/git';
+import { projectService } from '@/services/projectService';
+import { gitService } from '@/services/gitService';
+import { environmentsService } from '@/services/environmentsService';
+import { fileOverridesService } from '@/services/fileOverridesService';
+import { jarService } from '@/services/jarService';
+import { JarGenerationFileDto, JarGenerationRequestDto, JarGenerationResultDto } from '@/types/jar';
+
+// Stable empty arrays to avoid re-creating defaults on every render
+const EMPTY_STRING_ARRAY: string[] = [];
+const EMPTY_COMMIT_ARRAY: CommitDto[] = [];
 const EMPTY_FILE_ENTRY_ARRAY: FileEntry[] = [];
-const EMPTY_COMMIT_ARRAY: { sha: string; message: string }[] = [];
 
 export default function JarGeneration() {
-  const router = useRouter();
-  const { toast } = useToast()
+  const { user } = useAuthStore();
+  const { toast } = useToast();
+  const navigate = useNavigate();
 
-  const [activeStep, setActiveStep] = useState(0);
-  const [isGenerating, setIsGenerating] = useState(false);
-
+  // --- Project / Environment selection ---
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const [branch, setBranch] = useState('');
-  const [version, setVersion] = useState('');
-  const [environmentId, setEnvironmentId] = useState<string | null>(null);
-  const [strategy, setStrategy] = useState<'commit' | 'full' | 'manual'>('commit');
-  const [initialBase, setInitialBase] = useState('');
-  const [initialHead, setInitialHead] = useState('');
-  const [previewBase, setPreviewBase] = useState('');
-  const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
-  const [previewExpanded, setPreviewExpanded] = useState<Set<string>>(new Set());
+  const [selectedEnvironment, setSelectedEnvironment] = useState<Environment | null>(null);
+  const [applyOverrides, setApplyOverrides] = useState<boolean>(true);
 
-  const previewTabDisabled = strategy === 'manual';
-
-  const toggleFile = useCallback((path: string) => {
-    setSelectedFiles(curr => {
-      if (curr.includes(path)) {
-        return curr.filter(p => p !== path);
-      } else {
-        return [...curr, path];
-      }
-    });
-  }, []);
-
-  const { data: projects = EMPTY_PROJECT_ARRAY } = useQuery({
-    queryKey: ['projects'],
-    queryFn: () => projectService.getProjects()
+  const { data: userProjects = EMPTY_STRING_ARRAY as any } = useQuery({
+    queryKey: ['userProjects', user?.id],
+    queryFn: () => projectService.getUserProjects(user!.id),
+    enabled: !!user?.id
   });
 
-  const { data: environments = EMPTY_ENVIRONMENT_ARRAY } = useQuery({
+  const { data: projectEnvironments = EMPTY_STRING_ARRAY as any } = useQuery({
     queryKey: ['environments', selectedProject?.id],
-    queryFn: () => environmentService.getEnvironmentsByProject(selectedProject!.id!),
+    queryFn: () => environmentsService.getEnvironments(selectedProject!.id!),
     enabled: !!selectedProject?.id
   });
 
-  const { data: branches = [] } = useQuery({
+  const { data: fileOverrides = [] as FileOverride[] } = useQuery({
+    queryKey: ['fileOverrides', selectedEnvironment?.id],
+    queryFn: () => fileOverridesService.getFileOverrides(selectedEnvironment!.id!),
+    enabled: !!selectedEnvironment?.id
+  });
+
+  // --- Pipeline state ---
+  const [currentStep, setCurrentStep] = useState<PipelineStep>('config');
+  const [branch, setBranch] = useState('');
+  const [version, setVersion] = useState('1.0.0');
+  const [strategy, setStrategy] = useState<'commit' | 'full' | 'manual'>('manual');
+  const [selectedCommit, setSelectedCommit] = useState('');
+
+  const [initialBase, setInitialBase] = useState('');
+  const [initialHead, setInitialHead] = useState('');
+  const [previewBase, setPreviewBase] = useState('');
+
+  const [filesExpanded, setFilesExpanded] = useState<Set<string>>(new Set());
+  const [previewExpanded, setPreviewExpanded] = useState<Set<string>>(new Set());
+  const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
+  const [highlighted, setHighlighted] = useState<FileEntry | null>(null);
+
+  // --- Git data via gitService ---
+  const { data: branches = EMPTY_STRING_ARRAY } = useQuery({
     queryKey: ['branches', selectedProject?.id],
     queryFn: () => gitService.getBranches(selectedProject!.id!),
     enabled: !!selectedProject?.id
@@ -84,34 +84,49 @@ export default function JarGeneration() {
 
   const { data: commits = EMPTY_COMMIT_ARRAY } = useQuery({
     queryKey: ['commits', selectedProject?.id, branch],
-    queryFn: () => gitService.getCommits({ projectId: selectedProject!.id!, branch }),
+    queryFn: () => gitService.getCommits(selectedProject!.id!, branch),
     enabled: !!selectedProject?.id && !!branch
   });
 
-  useEffect(() => {
-    if (commits.length > 0) {
-      setInitialBase(commits[1]?.sha || commits[0]?.sha);
-      setInitialHead(commits[0]?.sha);
-      setPreviewBase(commits[1]?.sha || commits[0]?.sha);
-    }
-  }, [commits]);
-
-  const { data: comparedFiles = EMPTY_FILE_ENTRY_ARRAY } = useQuery({
-    queryKey: ['compare', selectedProject?.id, initialBase, initialHead],
-    queryFn: () => gitService.compare(selectedProject!.id!, initialBase, initialHead),
-    enabled:
-      strategy === 'commit' &&
-      !!selectedProject?.id &&
-      !!initialBase &&
-      !!initialHead
+  const { data: allFiles = EMPTY_STRING_ARRAY } = useQuery({
+    queryKey: ['allFiles', selectedProject?.id, branch],
+    queryFn: () => gitService.tree(selectedProject!.id!, branch),
+    enabled: !!selectedProject?.id && !!branch && strategy === 'manual'
   });
+
+  const manualFiles = useMemo(
+      () =>
+          strategy === 'manual'
+              ? allFiles.map(fn => ({ filename: fn, status: 'unmodified' as const }))
+              : EMPTY_FILE_ENTRY_ARRAY,
+      [allFiles, strategy]
+  );
+
+  // Compute base/head SHAs
+  useEffect(() => {
+    if (!commits.length) return;
+    const oldest = commits[commits.length - 1].sha;
+    const newest = commits[0].sha;
+
+    if (strategy === 'full') {
+      setInitialBase(oldest);
+      setInitialHead(newest);
+    } else if (strategy === 'commit' && selectedCommit) {
+      const idx = commits.findIndex(c => c.sha === selectedCommit);
+      const parent = idx < commits.length - 1 ? commits[idx + 1].sha : oldest;
+      setInitialBase(parent);
+      setInitialHead(selectedCommit);
+    }
+  }, [commits, strategy, selectedCommit]);
+
+  // Sync previewBase to initialBase
+  useEffect(() => {
+    setPreviewBase(initialBase);
+  }, [initialBase]);
 
   const { data: fullFiles = EMPTY_FILE_ENTRY_ARRAY } = useQuery({
     queryKey: ['fullCompare', selectedProject?.id, branch],
-    queryFn: async () => {
-      const result = await gitService.full(selectedProject!.id!, branch);
-      return Array.isArray(result) ? result : [];
-    },
+    queryFn: () => gitService.full(selectedProject!.id!, branch),
     enabled:
         strategy === 'full' &&
         !!selectedProject?.id &&
@@ -120,176 +135,354 @@ export default function JarGeneration() {
         !!initialHead
   });
 
-  const allFiles = strategy === 'full' ? fullFiles : comparedFiles;
+  const { data: commitFiles = EMPTY_FILE_ENTRY_ARRAY } = useQuery({
+    queryKey: ['commitCompare', selectedProject?.id, initialBase, initialHead],
+    queryFn: () => gitService.compare(selectedProject!.id!, initialBase, initialHead),
+    enabled:
+        strategy === 'commit' &&
+        !!selectedProject?.id &&
+        !!initialBase &&
+        !!initialHead
+  });
 
-  const [highlighted, setHighlighted] = useState<FileEntry | null>(null);
+  const { data: previewFiles = EMPTY_FILE_ENTRY_ARRAY } = useQuery({
+    queryKey: ['previewCompare', selectedProject?.id, previewBase, initialHead, selectedFiles],
+    queryFn: () =>
+        gitService.compareFiles({
+          projectId: selectedProject!.id!,
+          baseSha: previewBase,
+          headSha: initialHead,
+          files: selectedFiles
+        }),
+    enabled:
+        strategy !== 'manual' &&
+        !!selectedProject?.id &&
+        !!previewBase &&
+        !!initialHead &&
+        selectedFiles.length > 0
+  });
 
-  const handleNext = () => {
-    setActiveStep((curr) => Math.min(curr + 1, 4));
-  };
+  const initialFiles =
+      strategy === 'full'
+          ? fullFiles
+          : strategy === 'commit'
+              ? commitFiles
+              : EMPTY_FILE_ENTRY_ARRAY;
 
-  const handleBack = () => {
-    setActiveStep((curr) => Math.max(curr - 1, 0));
-  };
+  const filesToShow = strategy === 'manual' ? manualFiles : initialFiles;
 
-  const handleGenerate = async () => {
-    if (!selectedProject || !branch || !version) {
-      toast({
-        variant: "destructive",
-        title: "Missing required fields",
-        description: "Please fill in all required fields before generating the JAR.",
-      })
-      return;
-    }
+  // Build and expand trees once per stable filesToShow
+  const treeData = useMemo(() => buildTree(filesToShow), [filesToShow]);
+  const previewTree = useMemo(
+      () => buildTree(strategy === 'manual' ? EMPTY_FILE_ENTRY_ARRAY : previewFiles),
+      [previewFiles, strategy]
+  );
 
-    setIsGenerating(true);
-    const jobId = uuidv4();
+  useEffect(() => {
+    setFilesExpanded(new Set(collectFolders(treeData)));
+  }, [treeData]);
 
-    const payload: JarGenerationRequestDto = {
-      jobId: jobId,
-      projectId: selectedProject.id!,
-      branch: branch,
-      version: version,
-      environmentId: environmentId,
-      strategy: strategy,
-      baseSha: initialBase,
-      headSha: initialHead,
-      applyOverrides: true, // TODO: connect to file overrides
-      files: selectedFiles.map(filename => {
-        const file = allFiles.find(f => f.filename === filename);
-        return {
-          filename: filename,
-          status: file?.status || 'modified' // Default to 'modified' if status is undefined
-        };
-      })
+  useEffect(() => {
+    setPreviewExpanded(new Set(collectFolders(previewTree)));
+  }, [previewTree]);
+
+  const toggleExp = useCallback((isPreview: boolean, path: string) => {
+    const fn = isPreview ? setPreviewExpanded : setFilesExpanded;
+    fn(s => {
+      const ns = new Set(s);
+      ns.has(path) ? ns.delete(path) : ns.add(path);
+      return ns;
+    });
+  }, []);
+
+  const toggleFile = useCallback((path: string) => {
+    setSelectedFiles(s => (s.includes(path) ? s.filter(x => x !== path) : [...s, path]));
+  }, []);
+
+  // Generate the JAR
+  // src/pages/JarGeneration.tsx
+// (inside the handleGenerate function)
+
+const handleGenerate = async () => {
+  if (!selectedProject) {
+    toast({
+      title: 'No project selected',
+      variant: 'destructive'
+    });
+    return;
+  }
+  if (!selectedFiles.length) {
+    toast({
+      title: 'No files selected',
+      description: 'Pick at least one.',
+      variant: 'destructive'
+    });
+    return;
+  }
+
+  const filesPayload: JarGenerationFileDto[] = selectedFiles.map((filename) => {
+    const f = filesToShow.find((f) => f.filename === filename)!;
+    return {
+      filename,
+      status: f.status
     };
+  });
+const jobId = crypto.randomUUID();
 
-    try {
-      const result = await jarService.generateJar(payload);
-      toast({
-        title: "Generation started",
-        description: `Your JAR generation has started. You will be redirected to the status page.`,
-      })
-      router.push(`/status/${result.jobId}`);
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Error starting generation",
-        description: error.message || "Failed to start JAR generation.",
-      })
-    } finally {
-      setIsGenerating(false);
-    }
+  const payload: JarGenerationRequestDto = {
+    jobId ,
+    projectId: selectedProject.id,
+    branch,
+    version,
+    environmentId: selectedEnvironment?.id || null,
+    strategy,
+    baseSha: initialBase,
+    headSha: initialHead,
+    applyOverrides,
+    files: filesPayload
   };
 
-  const steps = [
-    { label: 'Project Selection' },
-    { label: 'Git Configuration' },
-    { label: 'Project Details' },
-    { label: 'Target Environment' },
-    { label: 'Preview & Generate' },
-    { label: 'Summary' },
-  ];
+  try {
+    // 1) Call the POST and get back { jobId, status, createdAt }
+    jarService.generateJar(payload);
+
+    // 2) Show a toast (optional)
+    toast({
+      title: 'Job queued',
+      description: `Job ID: ${jobId}`
+    });
+
+    // 3) Navigate to the new status page
+    navigate(`/jar-status/${encodeURIComponent(jobId)}`);
+  } catch (err) {
+    toast({ title: 'Generation failed', variant: 'destructive' });
+  }
+};
+
+
+  // Step & selection handlers
+  const handleProjectChange = (proj: Project | null) => {
+    setSelectedProject(proj);
+    setSelectedEnvironment(null);
+    setCurrentStep('config');
+    setBranch('');
+    setStrategy('manual');
+    setSelectedCommit('');
+    setInitialBase('');
+    setInitialHead('');
+    setPreviewBase('');
+    setSelectedFiles([]);
+    setHighlighted(null);
+  };
+
+  const handleEnvironmentChange = (env: Environment | null) => {
+    setSelectedEnvironment(env);
+  };
+
+  const handleBranchSelection = (b: string) => {
+    setBranch(b);
+    setSelectedFiles([]);
+    setHighlighted(null);
+  };
+
+  const handleStrategySelection = (s: 'commit' | 'full' | 'manual') => {
+    setStrategy(s);
+    setSelectedFiles([]);
+    setHighlighted(null);
+  };
+
+  const previewTabDisabled = strategy === 'manual';
 
   return (
-    <div className="container mx-auto py-10">
-      <h1 className="text-3xl font-bold mb-6">JAR Generation</h1>
+      <AuthGuard>
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+          <div className="container mx-auto py-8 space-y-8">
+            {/* Enhanced Header */}
+            <div className="text-center space-y-4">
+              <div className="flex items-center justify-center gap-3 mb-4">
+                <div className="p-3 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full">
+                  <Package className="h-8 w-8 text-white" />
+                </div>
+                <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                  JAR Generation Wizard
+                </h1>
+              </div>
+              <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+                Create deployment-ready JAR files with our intelligent build pipeline
+              </p>
+              
+              {/* Progress indicators */}
+              <div className="flex justify-center items-center gap-4 mt-6">
+                <Badge variant="outline" className="px-4 py-2">
+                  <Settings className="h-4 w-4 mr-2" />
+                  Configure
+                </Badge>
+                <div className="h-px w-8 bg-border"></div>
+                <Badge variant="outline" className="px-4 py-2">
+                  <Code className="h-4 w-4 mr-2" />
+                  Select Files
+                </Badge>
+                <div className="h-px w-8 bg-border"></div>
+                <Badge variant="outline" className="px-4 py-2">
+                  <Eye className="h-4 w-4 mr-2" />
+                  Preview
+                </Badge>
+                <div className="h-px w-8 bg-border"></div>
+                <Badge variant="outline" className="px-4 py-2">
+                  <Zap className="h-4 w-4 mr-2" />
+                  Generate
+                </Badge>
+              </div>
+            </div>
 
-      <Steps steps={steps} activeStep={activeStep} />
+            {/* Enhanced Pipeline Navigation */}
+            <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm dark:bg-gray-900/80">
+              <CardContent className="p-6">
+                <PipelineNav 
+                  currentStep={currentStep} 
+                  onStepChange={setCurrentStep} 
+                  previewDisabled={previewTabDisabled} 
+                />
+              </CardContent>
+            </Card>
 
-      <div className="mt-6">
-        {activeStep === 0 && (
-          <ProjectSelectionStep
-            projects={projects}
-            selectedProject={selectedProject}
-            setSelectedProject={setSelectedProject}
-            handleNext={handleNext}
-          />
-        )}
+            {/* Main Content Area */}
+            <div className="relative">
+              {/* Animated background gradient */}
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-purple-500/5 rounded-3xl"></div>
+              
+              <div className="relative z-10">
+                {currentStep === 'config' && (
+                    <ConfigStep
+                        projects={userProjects}
+                        selectedProject={selectedProject}
+                        setSelectedProject={handleProjectChange}
+                        environments={projectEnvironments}
+                        selectedEnvironment={selectedEnvironment}
+                        setSelectedEnvironment={handleEnvironmentChange}
+                        branches={branches}
+                        branch={branch}
+                        setBranch={handleBranchSelection}
+                        commits={commits}
+                        version={version}
+                        setVersion={setVersion}
+                        strategy={strategy}
+                        setStrategy={handleStrategySelection}
+                        selectedCommit={selectedCommit}
+                        setSelectedCommit={setSelectedCommit}
+                        loadingBranches={false}
+                        loadingCommits={false}
+                    />
+                )}
+                
+                {currentStep === 'files' && (
+                    <FileSelectionStep
+                        treeData={treeData}
+                        filesExpanded={filesExpanded}
+                        setFilesExpanded={setFilesExpanded}
+                        selectedFiles={selectedFiles}
+                        toggleFile={toggleFile}
+                        setHighlighted={setHighlighted}
+                        filesToShow={filesToShow}
+                    />
+                )}
+                
+                {currentStep === 'preview' && (
+                    <PreviewStep
+                        previewTabDisabled={previewTabDisabled}
+                        initialHead={initialHead}
+                        previewBase={previewBase}
+                        setPreviewBase={setPreviewBase}
+                        commits={commits}
+                        loadingCommits={false}
+                        previewTree={previewTree}
+                        previewExpanded={previewExpanded}
+                        toggleExp={toggleExp}
+                        selectedFiles={selectedFiles}
+                        highlighted={highlighted}
+                        setHighlighted={setHighlighted}
+                        projectId={selectedProject?.id!}
+                        environmentId={selectedEnvironment?.id!}
+                        fileOverrides={fileOverrides}
+                        applyOverrides={applyOverrides}
+                        setApplyOverrides={setApplyOverrides}
+                        handleGenerate={() => setCurrentStep('summary')}
+                    />
+                )}
+                
+                {currentStep === 'summary' && (
+                    <SummaryStep
+                        branch={branch}
+                        version={version}
+                        strategy={strategy}
+                        selectedFiles={selectedFiles}
+                        filesToShow={filesToShow}
+                        onConfirm={handleGenerate}
+                        onBack={() => setCurrentStep('preview')}
+                        project={selectedProject}
+                        environment={selectedEnvironment}
+                        applyOverrides={applyOverrides}
+                        fileOverrides={fileOverrides}
+                    />
+                )}
+              </div>
+            </div>
 
-        {activeStep === 1 && (
-          <GitConfigurationStep
-            selectedProject={selectedProject}
-            branch={branch}
-            setBranch={setBranch}
-            branches={branches}
-            strategy={strategy}
-            setStrategy={setStrategy}
-            initialBase={initialBase}
-            setInitialBase={setInitialBase}
-            initialHead={initialHead}
-            setInitialHead={setInitialHead}
-            commits={commits}
-            handleNext={handleNext}
-            handleBack={handleBack}
-          />
-        )}
-
-        {activeStep === 2 && (
-          <ProjectDetailsStep
-            version={version}
-            setVersion={setVersion}
-            handleNext={handleNext}
-            handleBack={handleBack}
-          />
-        )}
-
-        {activeStep === 3 && (
-          <TargetEnvironmentStep
-            selectedProject={selectedProject}
-            environmentId={environmentId}
-            setEnvironmentId={setEnvironmentId}
-            environments={environments}
-            handleNext={handleNext}
-            handleBack={handleBack}
-          />
-        )}
-
-        {activeStep === 4 && selectedProject ? (
-          <PreviewStep
-            previewTabDisabled={previewTabDisabled}
-            initialHead={initialHead}
-            previewBase={previewBase}
-            setPreviewBase={setPreviewBase}
-            commits={commits}
-            loadingCommits={false} // TODO: connect to loading state
-            previewTree={[]} // TODO: connect to file tree
-            previewExpanded={previewExpanded}
-            toggleExp={(isPreview, path) => {
-              setPreviewExpanded(s => {
-                const ns = new Set(s);
-                ns.has(path) ? ns.delete(path) : ns.add(path);
-                return ns;
-              });
-            }}
-            selectedFiles={selectedFiles}
-            highlighted={highlighted}
-            setHighlighted={setHighlighted}
-            projectId={selectedProject.id!}
-            environmentId={environmentId}
-            fileOverrides={[]} // TODO: connect to file overrides
-            applyOverrides={true} // TODO: connect to file overrides
-            setApplyOverrides={(apply: boolean) => {}} // TODO: connect to file overrides
-            handleGenerate={handleGenerate}
-            handleBack={handleBack}
-          />
-        ) : null}
-
-        {activeStep === 5 && (
-          <SummaryStep
-            selectedProject={selectedProject}
-            branch={branch}
-            version={version}
-            environmentId={environmentId}
-            strategy={strategy}
-            initialBase={initialBase}
-            initialHead={initialHead}
-            selectedFiles={selectedFiles}
-            handleGenerate={handleGenerate}
-            handleBack={handleBack}
-          />
-        )}
-      </div>
-    </div>
+            {/* Enhanced Navigation Controls */}
+            <Card className="border-0 shadow-lg bg-white/90 backdrop-blur-sm dark:bg-gray-900/90">
+              <CardContent className="p-6">
+                <div className="flex justify-between items-center">
+                  {currentStep !== 'config' ? (
+                      <Button
+                          variant="outline"
+                          size="lg"
+                          onClick={() => {
+                            const steps: PipelineStep[] = ['config', 'files', 'preview', 'summary'];
+                            const currentIndex = steps.indexOf(currentStep);
+                            setCurrentStep(steps[Math.max(0, currentIndex - 1)]);
+                          }}
+                          className="px-8"
+                      >
+                        Previous
+                      </Button>
+                  ) : <div></div>}
+                  
+                  {selectedFiles.length > 0 && (
+                    <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-full">
+                      <Badge variant="secondary">{selectedFiles.length} files selected</Badge>
+                    </div>
+                  )}
+                  
+                  {currentStep !== 'summary' && (
+                      <Button
+                          size="lg"
+                          onClick={() => {
+                            const steps: PipelineStep[] = ['config', 'files', 'preview', 'summary'];
+                            const currentIndex = steps.indexOf(currentStep);
+                            let nextStep = steps[currentIndex + 1];
+                            
+                            if (nextStep === 'preview' && previewTabDisabled) {
+                              nextStep = 'summary';
+                            }
+                            
+                            if (currentStep === 'config' && !selectedProject) {
+                              toast({ title: 'Please select a project first', variant: 'destructive' });
+                              return;
+                            }
+                            
+                            setCurrentStep(nextStep);
+                          }}
+                          disabled={currentStep === 'files' && selectedFiles.length === 0}
+                          className="px-8 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
+                      >
+                        Next Step
+                      </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </AuthGuard>
   );
 }

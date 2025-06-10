@@ -412,8 +412,8 @@ const PreviewStep: React.FC<PreviewStepProps> = ({
                     {overridesOpen ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
                   </div>
                 </CardTitle>
+                </CardHeader>
               </CollapsibleTrigger>
-            </CollapsibleTrigger>
             <CollapsibleContent>
               <CardContent className="pt-0 space-y-4">
                 <div className="relative">

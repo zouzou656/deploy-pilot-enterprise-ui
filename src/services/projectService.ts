@@ -1,43 +1,49 @@
+import { apiClient } from '@/services/api.client';
+import { API_CONFIG } from '@/config/api.config';
+import { Project } from '@/types/project';
 
-import { apiClient } from './api.client';
-import { Project, CreateProjectDto, UpdateProjectDto } from '@/types/project';
+export const projectService = {
+    getUserProjects: async (userId: string): Promise<Project[]> => {
+        const { data, error } = await apiClient.get<Project[]>(
+            API_CONFIG.ENDPOINTS.PROJECTS.USER_PROJECTS,
+            { params: { userId } }
+        );
+        if (error) throw new Error(error);
+        return data ?? [];
+    },
 
-export interface ProjectService {
-  createProject(project: CreateProjectDto): Promise<Project>;
-  getProject(id: string): Promise<Project>;
-  updateProject(id: string, project: UpdateProjectDto): Promise<Project>;
-  deleteProject(id: string): Promise<void>;
-  getUserProjects(userId: string): Promise<Project[]>;
-  getProjects(): Promise<Project[]>;
-}
+    getAllProjects: async (): Promise<Project[]> => {
+        const { data, error } = await apiClient.get<Project[]>(
+            API_CONFIG.ENDPOINTS.PROJECTS.LIST
+        );
+        if (error) throw new Error(error);
+        return data ?? [];
+    },
 
-export const projectService: ProjectService = {
-  async createProject(project: CreateProjectDto): Promise<Project> {
-    const response = await apiClient.post('/projects', project);
-    return response.data;
-  },
+    createProject: async (payload: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>): Promise<Project> => {
+        const { data, error } = await apiClient.post<Project>(
+            API_CONFIG.ENDPOINTS.PROJECTS.CREATE,
+            payload
+        );
+        if (error) throw new Error(error);
+        return data!;
+    },
 
-  async getProject(id: string): Promise<Project> {
-    const response = await apiClient.get(`/projects/${id}`);
-    return response.data;
-  },
+    updateProject: async (id: string, payload: Partial<Project>): Promise<Project> => {
+        const { data, error } = await apiClient.put<Project>(
+            API_CONFIG.ENDPOINTS.PROJECTS.UPDATE,
+            payload,
+            { params: { id } }
+        );
+        if (error) throw new Error(error);
+        return data!;
+    },
 
-  async updateProject(id: string, project: UpdateProjectDto): Promise<Project> {
-    const response = await apiClient.put(`/projects/${id}`, project);
-    return response.data;
-  },
-
-  async deleteProject(id: string): Promise<void> {
-    await apiClient.delete(`/projects/${id}`);
-  },
-
-  async getUserProjects(userId: string): Promise<Project[]> {
-    const response = await apiClient.get(`/projects/user/${userId}`);
-    return response.data;
-  },
-
-  async getProjects(): Promise<Project[]> {
-    const response = await apiClient.get('/projects');
-    return response.data;
-  }
+    deleteProject: async (id: string): Promise<void> => {
+        const { status, error } = await apiClient.delete<void>(
+            API_CONFIG.ENDPOINTS.PROJECTS.DELETE,
+            { params: { id } }
+        );
+        if (status < 200 || status >= 300) throw new Error(error || `Delete failed: ${status}`);
+    }
 };

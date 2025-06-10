@@ -1,3 +1,11 @@
+// src/types/jar.ts
+
+// DTO you get back from POST /api/jar/generate
+export interface JarGenerationResultDto {
+  jobId: string;
+  status: 'QUEUED';
+  createdAt: string;
+}
 
 export interface JarGenerationFileDto {
   filename: string;
@@ -10,23 +18,18 @@ export interface JarGenerationRequestDto {
   branch: string;
   version: string;
   environmentId: string | null;
-  strategy: 'commit' | 'full' | 'manual';
+  strategy: string;
   baseSha: string;
   headSha: string;
   applyOverrides: boolean;
   files: JarGenerationFileDto[];
 }
 
-export interface JarGenerationResultDto {
-  jobId: string;
-  status: string;
-  createdAt: string;
-}
-
 export interface JarStatusDto {
   jobId: string;
   status: string;
-  startedAt?: string;
-  completedAt?: string;
-  jarUrl?: string;
+  progress:string;
+  startedAt: string;
+  completedAt: string;
+  jarUrl: string | null;
 }

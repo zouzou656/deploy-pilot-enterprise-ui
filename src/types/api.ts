@@ -43,46 +43,8 @@ export interface UserDetailDto extends UserDto {
   updatedAt: string;
 }
 
-export interface CreateUserDto {
-  email: string | null;
-  password: string | null;
-  username: string | null;
-  firstName: string | null;
-  lastName: string | null;
-  role: string | null;
-  status: string | null;
-}
 
-export interface UpdateUserDto {
-  password?: string | null;
-  username?: string | null;
-  firstName?: string | null;
-  lastName?: string | null;
-  role?: string | null;
-  status?: string | null;
-}
 
-// Role DTOs
-export interface RoleDto {
-  id: string | null;
-  name: string | null;
-  description: string | null;
-}
-
-export interface RoleDetailDto extends RoleDto {
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface CreateRoleDto {
-  name: string | null;
-  description: string | null;
-}
-
-export interface UpdateRoleDto {
-  name?: string | null;
-  description?: string | null;
-}
 
 // Permission DTOs
 export interface PermissionDto {
@@ -91,12 +53,6 @@ export interface PermissionDto {
   description: string | null;
   groupName: string | null;
   createdAt: string;
-}
-
-export interface CreatePermissionDto {
-  name: string | null;
-  description: string | null;
-  groupName: string | null;
 }
 
 export interface UpdatePermissionDto {
