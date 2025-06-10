@@ -30,36 +30,15 @@ const LoginForm = () => {
     try {
       await login(email, password);
     } catch (error) {
-      // Error is handled in the store
-      console.error('Login error:', error);
+       toast({
+        title: 'Validation Error',
+        description: error,
+        variant: 'destructive',
+      });
     }
   };
 
-  const handleDemoLogin = async (role: string) => {
-    let demoEmail, demoPassword;
-    
-    switch (role) {
-      case 'admin':
-        demoEmail = 'admin@example.com';
-        demoPassword = 'admin123';
-        break;
-      case 'developer':
-        demoEmail = 'developer@example.com';
-        demoPassword = 'dev123';
-        break;
-      case 'viewer':
-        demoEmail = 'viewer@example.com';
-        demoPassword = 'view123';
-        break;
-      default:
-        return;
-    }
-    
-    setEmail(demoEmail);
-    setPassword(demoPassword);
-    await login(demoEmail, demoPassword);
-  };
-
+ 
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardHeader className="space-y-1">
@@ -87,12 +66,7 @@ const LoginForm = () => {
             />
           </div>
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="password">Password</Label>
-              <a href="#" className="text-sm text-primary hover:underline">
-                Forgot password?
-              </a>
-            </div>
+            
             <Input
               id="password"
               type="password"
@@ -101,6 +75,12 @@ const LoginForm = () => {
               onChange={(e) => setPassword(e.target.value)}
               disabled={loading}
             />
+            <div className="flex items-center justify-between">
+              <Label htmlFor="password">Password</Label>
+              <a href="#" className="text-sm text-primary hover:underline">
+                Forgot password?
+              </a>
+            </div>
           </div>
           <div className="flex items-center space-x-2">
             <Input
@@ -117,37 +97,7 @@ const LoginForm = () => {
           </Button>
         </form>
       </CardContent>
-      <CardFooter className="flex flex-col gap-2">
-        <div className="text-sm text-center mb-2">
-          Quick access demo accounts:
-        </div>
-        <div className="flex flex-wrap gap-2 justify-center">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => handleDemoLogin('admin')}
-            disabled={loading}
-          >
-            Admin
-          </Button>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => handleDemoLogin('developer')}
-            disabled={loading}
-          >
-            Developer
-          </Button>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => handleDemoLogin('viewer')}
-            disabled={loading}
-          >
-            Viewer
-          </Button>
-        </div>
-      </CardFooter>
+     
     </Card>
   );
 };

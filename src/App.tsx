@@ -8,7 +8,6 @@ import { useEffect } from "react";
 import { Helmet } from "react-helmet";
 
 // Contexts
-import { ProjectProvider } from "./contexts/ProjectContext";
 
 // Pages
 import Login from "./pages/Login";
@@ -38,6 +37,7 @@ import AuthGuard from "./components/auth/AuthGuard";
 // Stores
 import useThemeStore from "./stores/themeStore";
 import { PERMISSIONS } from "./stores/authStore";
+import JarStatusPage from "./pages/JarStatusPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -81,7 +81,7 @@ const App = () => {
               path="/*"
               element={
                 <AuthGuard>
-                  <ProjectProvider>
+                  
                     <Routes>
                       <Route
                         path="dashboard"
@@ -136,7 +136,14 @@ const App = () => {
                           </AppLayout>
                         }
                       />
-
+                      <Route 
+                        path="/jar-status/:jobId"
+                        element={
+                          <AppLayout>
+                            <JarStatusPage />
+                          </AppLayout>
+                          } 
+                      />
                       <Route
                         path="jar-viewer/:jarName"
                         element={
@@ -203,7 +210,6 @@ const App = () => {
                       {/* 404 route if no protected route matches */}
                       <Route path="*" element={<NotFound />} />
                     </Routes>
-                  </ProjectProvider>
                 </AuthGuard>
               }
             />

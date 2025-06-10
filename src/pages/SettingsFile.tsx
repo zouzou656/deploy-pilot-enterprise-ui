@@ -1,208 +1,134 @@
+// src/pages/SettingsFile.tsx
 
-import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import PageHeader from '@/components/ui-custom/PageHeader';
-import { Save, FileJson, Copy, Download } from 'lucide-react';
-import CodeEditor from '@/components/ui-custom/CodeEditor';
-import { useToast } from '@/hooks/use-toast';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import React, { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import PageHeader from "@/components/ui-custom/PageHeader";
+import { Save, FileJson, Copy, Download } from "lucide-react";
+import CodeEditor from "@/components/ui-custom/CodeEditor";
+import { useToast } from "@/hooks/use-toast";
 
-const SettingsFile = () => {
+import { settingsService } from "@/services/settingsFileService";
+
+const SettingsFile: React.FC = () => {
   const { toast } = useToast();
-  const [settings, setSettings] = useState<string>(`{
-  "project": {
-    "name": "OSB Integration",
-    "version": "1.0.0"
-  },
-  "environment": {
-    "development": {
-      "weblogic": {
-        "host": "dev-weblogic.example.com",
-        "port": 7001,
-        "username": "weblogic"
-      }
-    },
-    "testing": {
-      "weblogic": {
-        "host": "test-weblogic.example.com",
-        "port": 7001,
-        "username": "weblogic"
-      }
-    },
-    "production": {
-      "weblogic": {
-        "host": "prod-weblogic.example.com",
-        "port": 7001,
-        "username": "weblogic"
-      }
-    }
-  }
-}`);
 
-  const [template, setTemplate] = useState<string>('default');
+  // The JSON text shown in the editor:
+  const [settings, setSettings] = useState<string>("");
 
-  const templates = {
-    default: `{
-  "project": {
-    "name": "OSB Integration",
-    "version": "1.0.0"
-  },
-  "environment": {
-    "development": {
-      "weblogic": {
-        "host": "dev-weblogic.example.com",
-        "port": 7001,
-        "username": "weblogic"
-      }
-    },
-    "testing": {
-      "weblogic": {
-        "host": "test-weblogic.example.com",
-        "port": 7001,
-        "username": "weblogic"
-      }
-    },
-    "production": {
-      "weblogic": {
-        "host": "prod-weblogic.example.com",
-        "port": 7001,
-        "username": "weblogic"
-      }
-    }
-  }
-}`,
-    minimal: `{
-  "project": {
-    "name": "OSB Integration",
-    "version": "1.0.0"
-  },
-  "environment": {
-    "development": {
-      "weblogic": {
-        "host": "dev-weblogic.example.com",
-        "port": 7001
-      }
-    }
-  }
-}`,
-    extended: `{
-  "project": {
-    "name": "OSB Integration",
-    "version": "1.0.0",
-    "description": "Main OSB integration project",
-    "owner": "Integration Team",
-    "repository": "git@github.com:example/osb-integration.git"
-  },
-  "environment": {
-    "development": {
-      "weblogic": {
-        "host": "dev-weblogic.example.com",
-        "port": 7001,
-        "username": "weblogic",
-        "domainName": "dev_domain",
-        "clusterName": "dev_cluster",
-        "jmsServer": "dev_jms",
-        "dataSourceName": "dev_ds"
-      },
-      "monitoring": {
-        "enabled": true,
-        "alertThreshold": "warning",
-        "notificationEmail": "dev-alerts@example.com"
-      },
-      "logging": {
-        "level": "DEBUG",
-        "retention": "7d"
-      }
-    },
-    "testing": {
-      "weblogic": {
-        "host": "test-weblogic.example.com",
-        "port": 7001,
-        "username": "weblogic",
-        "domainName": "test_domain",
-        "clusterName": "test_cluster",
-        "jmsServer": "test_jms",
-        "dataSourceName": "test_ds"
-      },
-      "monitoring": {
-        "enabled": true,
-        "alertThreshold": "warning",
-        "notificationEmail": "test-alerts@example.com"
-      },
-      "logging": {
-        "level": "INFO",
-        "retention": "14d"
-      }
-    },
-    "production": {
-      "weblogic": {
-        "host": "prod-weblogic.example.com",
-        "port": 7001,
-        "username": "weblogic",
-        "domainName": "prod_domain",
-        "clusterName": "prod_cluster",
-        "jmsServer": "prod_jms",
-        "dataSourceName": "prod_ds"
-      },
-      "monitoring": {
-        "enabled": true,
-        "alertThreshold": "error",
-        "notificationEmail": "prod-alerts@example.com",
-        "smsNotifications": true,
-        "oncallRotation": "integration-team"
-      },
-      "logging": {
-        "level": "WARN",
-        "retention": "30d",
-        "archiving": true,
-        "archiveLocation": "s3://logs-backup/osb"
-      },
-      "performance": {
-        "cachingEnabled": true,
-        "maxThreads": 50,
-        "connectionPoolSize": 20,
-        "timeoutSeconds": 30
-      }
-    }
-  },
-  "deployment": {
-    "strategy": "rolling",
-    "backupBefore": true,
-    "approvalRequired": {
-      "testing": false,
-      "production": true
-    },
-    "notifications": {
-      "slack": "#deployments",
-      "email": "team@example.com"
-    }
-  }
-}`
-  };
+  // Is the current `settings` valid JSON?
+  const [isValidJson, setIsValidJson] = useState<boolean>(true);
+  // If invalid, hold the parse error message:
+  const [parseError, setParseError] = useState<string>("");
 
-  const handleTemplateChange = (template: string) => {
-    setTemplate(template);
-    setSettings(templates[template as keyof typeof templates]);
-  };
+  // Loading / saving indicators:
+  const [loading, setLoading] = useState<boolean>(true);
+  const [saving, setSaving] = useState<boolean>(false);
 
-  const handleSave = () => {
-    // Validate JSON
+  // 1) On mount, fetch the JSON from the backend:
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadSettings = async () => {
+      setLoading(true);
+      try {
+        const data = await settingsService.getSettings();
+        if (!cancelled) {
+          // Pretty-print with 2-space indent
+          const pretty = JSON.stringify(data, null, 2);
+          setSettings(pretty);
+
+          // Validate immediately:
+          setIsValidJson(true);
+          setParseError("");
+        }
+      } catch (err: any) {
+        if (!cancelled) {
+          // If fetch fails, show a toast and set an empty object as fallback
+          setSettings("{}");
+          setIsValidJson(true);
+          setParseError("");
+          toast({
+            title: "Failed to load configuration",
+            description: err.message || "Could not fetch config from server.",
+            variant: "destructive",
+          });
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadSettings();
+    return () => {
+      cancelled = true;
+    };
+  }, [toast]);
+
+  // 2) Re-validate JSON whenever `settings` changes:
+  useEffect(() => {
+    // If the editor is empty, we consider it invalid:
+    if (settings.trim() === "") {
+      setIsValidJson(false);
+      setParseError("Configuration cannot be empty.");
+      return;
+    }
+
     try {
       JSON.parse(settings);
-      toast({
-        title: "Settings Saved",
-        description: "Your configuration has been saved successfully.",
-      });
-    } catch (e) {
+      setIsValidJson(true);
+      setParseError("");
+    } catch (e: any) {
+      setIsValidJson(false);
+      setParseError(e.message);
+    }
+  }, [settings]);
+
+  // 3) On “Save,” only attempt PUT if valid JSON
+  const handleSave = async () => {
+    if (!isValidJson) {
       toast({
         title: "Invalid JSON",
-        description: "Please fix the JSON format before saving.",
-        variant: "destructive"
+        description: "Please fix the JSON syntax before saving.",
+        variant: "destructive",
       });
+      return;
+    }
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(settings);
+    } catch {
+      // This should never happen because we already validated
+      toast({
+        title: "Invalid JSON",
+        description: "Please fix the JSON syntax before saving.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await settingsService.updateSettings(parsed);
+      toast({
+        title: "Settings Saved",
+        description: "Configuration has been updated successfully.",
+      });
+    } catch (err: any) {
+      toast({
+        title: "Failed to update configuration",
+        description: err.message || "Could not send updated config to server.",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
     }
   };
 
+  // 4) Copy to clipboard (unchanged)
   const handleCopy = () => {
     navigator.clipboard.writeText(settings);
     toast({
@@ -211,12 +137,13 @@ const SettingsFile = () => {
     });
   };
 
+  // 5) Download as .json (unchanged)
   const handleDownload = () => {
-    const blob = new Blob([settings], { type: 'application/json' });
+    const blob = new Blob([settings], { type: "application/json" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
-    a.download = 'osb-config.json';
+    a.download = "config.json";
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -225,11 +152,11 @@ const SettingsFile = () => {
 
   return (
     <div className="space-y-6">
-      <PageHeader 
-        title="Settings File" 
-        description="Configure deployment settings for OSB integration projects"
+      <PageHeader
+        title="Settings File"
+        description="Fetch and edit your configuration JSON"
       />
-      
+
       <Card className="overflow-hidden">
         <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between pb-2">
           <div>
@@ -238,31 +165,11 @@ const SettingsFile = () => {
               Configuration Editor
             </CardTitle>
             <CardDescription>
-              Edit JSON configuration for deployment environments
+              Load the JSON from the backend, edit it, then save it back.
             </CardDescription>
           </div>
-          <div className="mt-4 md:mt-0">
-            {/* Wrap TabsList in a Tabs component */}
-            <Tabs value={template} onValueChange={handleTemplateChange}>
-              <TabsList>
-                <TabsTrigger value="default">
-                  Standard
-                </TabsTrigger>
-                <TabsTrigger value="minimal">
-                  Minimal
-                </TabsTrigger>
-                <TabsTrigger value="extended">
-                  Extended
-                </TabsTrigger>
-              </TabsList>
-              
-              {/* Add TabsContent components for each tab, even though we don't directly display them */}
-              <TabsContent value="default" className="hidden"></TabsContent>
-              <TabsContent value="minimal" className="hidden"></TabsContent>
-              <TabsContent value="extended" className="hidden"></TabsContent>
-            </Tabs>
-          </div>
         </CardHeader>
+
         <CardContent>
           <div className="bg-muted rounded-lg overflow-hidden border">
             <div className="h-[500px]">
@@ -270,20 +177,27 @@ const SettingsFile = () => {
                 value={settings}
                 onChange={setSettings}
                 language="json"
+                readOnly={loading}
               />
             </div>
           </div>
-          
+
           <div className="mt-4 flex flex-wrap gap-2">
-            <Button onClick={handleSave}>
+            <Button
+              onClick={handleSave}
+              disabled={!isValidJson || saving}
+              variant="primary"
+            >
               <Save className="mr-2 h-4 w-4" />
-              Save Settings
+              {saving ? "Saving..." : "Save Settings"}
             </Button>
-            <Button variant="outline" onClick={handleCopy}>
+
+            <Button variant="outline" onClick={handleCopy} disabled={loading}>
               <Copy className="mr-2 h-4 w-4" />
               Copy to Clipboard
             </Button>
-            <Button variant="outline" onClick={handleDownload}>
+
+            <Button variant="outline" onClick={handleDownload} disabled={loading}>
               <Download className="mr-2 h-4 w-4" />
               Download JSON
             </Button>

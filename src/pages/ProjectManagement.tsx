@@ -1,852 +1,961 @@
-
-import React, { useEffect, useState } from 'react';
+import React, { useState,useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { Plus, Trash, Edit, Server, FileText, Shield } from 'lucide-react';
+import { Plus, Trash, Edit } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import AuthGuard from '@/components/auth/AuthGuard';
 import PageHeader from '@/components/ui-custom/PageHeader';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent
+} from '@/components/ui/card';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   Dialog,
+  DialogTrigger,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
-  DialogFooter,
+  DialogDescription,
+  DialogFooter
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
   SelectTrigger,
   SelectValue,
+  SelectContent,
+  SelectGroup,
+  SelectItem
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import {
   Table,
-  TableBody,
-  TableCell,
-  TableHead,
   TableHeader,
   TableRow,
+  TableHead,
+  TableBody,
+  TableCell
 } from '@/components/ui/table';
-
-import useProjectStore from '@/stores/projectStore';
-import useAuthStore from '@/stores/authStore';
-import { Project, ProjectEnvironment, FileOverride } from '@/types/project';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
-const ProjectManagement = () => {
+import useAuthStore from '@/stores/authStore';
+import { Project, ProjectEnvironment, FileOverride } from '@/types/project';
+import { projectService } from '@/services/projectService';
+import { environmentsService } from '@/services/environmentsService';
+import { fileOverridesService } from '@/services/fileOverridesService';
+import { EnvironmentDefinitionDto } from '@/types/environment';
+import {definitionsService} from "@/services/definitionsService.ts";
+
+const ProjectManagement: React.FC = () => {
+  const { user } = useAuthStore();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { user } = useAuthStore();
-  
-  const {
-    projects,
-    environments,
-    fileOverrides,
-    fetchProjects,
-    fetchEnvironments,
-    fetchFileOverrides,
-    createProject,
-    updateProject,
-    deleteProject,
-    createEnvironment,
-    updateEnvironment,
-    deleteEnvironment,
-    createFileOverride,
-    updateFileOverride,
-    deleteFileOverride,
-  } = useProjectStore();
-  
+  const qc = useQueryClient();
+
+  // Tabs & selection
+  const [activeTab, setActiveTab] = useState<'projects' | 'environments' | 'overrides'>('projects');
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [selectedEnvironment, setSelectedEnvironment] = useState<ProjectEnvironment | null>(null);
-  const [activeTab, setActiveTab] = useState('projects');
-  
-  // Form states
+
+  // Dialog & form state
   const [showProjectForm, setShowProjectForm] = useState(false);
   const [showEnvironmentForm, setShowEnvironmentForm] = useState(false);
   const [showOverrideForm, setShowOverrideForm] = useState(false);
-  
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingId, setEditingId] = useState<string>('');
+  const [formDefs, setFormDefs] = useState<EnvironmentDefinitionDto | null>(null);
+  const [innerTab, setInnerTab] = useState<'definitions'|'overrides'>('definitions');
+
+  // Form values
   const [newProject, setNewProject] = useState<Partial<Project>>({
     name: '',
     description: '',
     gitRepoUrl: '',
-    gitUsername: '',
+    gitUsername: ''
   });
-  
   const [newEnvironment, setNewEnvironment] = useState<Partial<ProjectEnvironment>>({
     name: '',
     host: '',
     port: 7001,
     username: '',
-    isProduction: false,
+    deploymentChannel:'',
+    isProduction: false
   });
-  
   const [newOverride, setNewOverride] = useState<Partial<FileOverride>>({
-    filename: '',
+    filePath: '',
     fileType: 'BIX',
-    originalValue: '',
-    overrideValue: '',
+    content: ''
   });
-  
-  const [isEditing, setIsEditing] = useState(false);
-  const [editingId, setEditingId] = useState<string>('');
 
   // Queries
-  const { data: projectEnvironments = [], refetch: refetchEnvironments } = useQuery({
+  const { data: projects = [] } = useQuery({
+    queryKey: ['projects'],
+    queryFn: () => projectService.getAllProjects(),
+    enabled: !!user
+  });
+
+  const { data: projectEnvironments = [] } = useQuery({
     queryKey: ['environments', selectedProject?.id],
-    enabled: !!selectedProject?.id,
-    queryFn: () => fetchEnvironments(selectedProject!.id),
+    queryFn: () => environmentsService.getEnvironments(selectedProject!.id!),
+    enabled: !!selectedProject
   });
-  
-  const { data: environmentOverrides = [], refetch: refetchOverrides } = useQuery({
+
+  const {
+    data: environmentOverrides = [],
+    refetch: refetchOverrides
+  } = useQuery({
     queryKey: ['overrides', selectedEnvironment?.id],
-    enabled: !!selectedEnvironment?.id,
-    queryFn: () => fetchFileOverrides(selectedEnvironment!.id),
+    queryFn: () => fileOverridesService.getFileOverrides(selectedEnvironment!.id!),
+    enabled: !!selectedEnvironment
+  });
+  const {
+    data: defs,
+    isLoading: loadingDefs,
+    refetch: refetchDefs
+  } = useQuery({
+    queryKey: ['definitions', selectedEnvironment?.id],
+    queryFn: () => definitionsService.getDefinitions(selectedEnvironment!.id!),
+    enabled: !!selectedEnvironment
   });
 
-  // Load projects on mount
-  useEffect(() => {
-    fetchProjects();
-  }, [fetchProjects]);
 
-  // Project CRUD functions
-  const handleProjectSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    try {
-      if (!user) throw new Error('User not authenticated');
-      
-      if (isEditing && editingId) {
-        await updateProject(editingId, newProject);
-        toast({ title: 'Project updated successfully' });
-      } else {
-        if (!newProject.name || !newProject.gitRepoUrl) {
-          throw new Error('Project name and Git URL are required');
-        }
-        
-        await createProject({
-          name: newProject.name!,
-          description: newProject.description,
-          gitRepoUrl: newProject.gitRepoUrl!,
-          gitUsername: newProject.gitUsername,
-          createdBy: user.id,
-        });
-        toast({ title: 'Project created successfully' });
-      }
-      
+  const updateDefs = useMutation({
+    mutationFn: (payload: EnvironmentDefinitionDto) =>
+        definitionsService.updateDefinitions(selectedEnvironment!.id!, payload),
+    onSuccess: () => {
+      toast({ title: 'Definitions saved' });
+      refetchDefs();
+    }
+  });
+  // Mutations (v5 object signature)
+  const createProject = useMutation({
+    mutationFn: (payload: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>) =>
+        projectService.createProject(payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['projects', user?.id] });
+      toast({ title: 'Project created' });
       setShowProjectForm(false);
-      setNewProject({ name: '', description: '', gitRepoUrl: '', gitUsername: '' });
-      setIsEditing(false);
-      setEditingId('');
-    } catch (error: any) {
-      toast({ 
-        title: 'Error',
-        description: error.message,
-        variant: 'destructive' 
-      });
+    }
+  });
+
+  const updateProject = useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: Partial<Project> }) =>
+        projectService.updateProject(id, payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['projects', user?.id] });
+      toast({ title: 'Project updated' });
+      setShowProjectForm(false);
+    }
+  });
+
+  const deleteProject = useMutation({
+    mutationFn: (id: string) => projectService.deleteProject(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['projects', user?.id] });
+      toast({ title: 'Project deleted' });
+      setSelectedProject(null);
+    }
+  });
+
+  const createEnvironment = useMutation({
+    mutationFn: (payload: Omit<ProjectEnvironment, 'id' | 'createdAt' | 'updatedAt'>) =>
+        environmentsService.createEnvironment(payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['environments', selectedProject?.id] });
+      toast({ title: 'Environment created' });
+      setShowEnvironmentForm(false);
+    }
+  });
+
+  const updateEnvironment = useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: Partial<ProjectEnvironment> }) =>
+        environmentsService.updateEnvironment(id, payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['environments', selectedProject?.id] });
+      toast({ title: 'Environment updated' });
+      setShowEnvironmentForm(false);
+    }
+  });
+
+  const deleteEnvironment = useMutation({
+    mutationFn: (id: string) => environmentsService.deleteEnvironment(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['environments', selectedProject?.id] });
+      toast({ title: 'Environment deleted' });
+      setSelectedEnvironment(null);
+    }
+  });
+
+  const createOverride = useMutation({
+    mutationFn: (payload: Omit<FileOverride, 'id' | 'createdAt' | 'updatedAt'>) =>
+        fileOverridesService.createFileOverride(payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['overrides', selectedEnvironment?.id] });
+      toast({ title: 'Override created' });
+      setShowOverrideForm(false);
+    }
+  });
+
+  const updateOverride = useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: Partial<FileOverride> }) =>
+        fileOverridesService.updateFileOverride(id, payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['overrides', selectedEnvironment?.id] });
+      toast({ title: 'Override updated' });
+      setShowOverrideForm(false);
+    }
+  });
+
+  const deleteOverride = useMutation({
+    mutationFn: (id: string) => fileOverridesService.deleteFileOverride(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['overrides', selectedEnvironment?.id] });
+      toast({ title: 'Override deleted' });
+    }
+  });
+
+  // Handlers
+  const handleProjectSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isEditing && editingId) {
+      updateProject.mutate({ id: editingId, payload: newProject });
+    } else {
+      createProject.mutate({ ...newProject, createdBy: user!.id });
     }
   };
-  
-  const handleEditProject = (project: Project) => {
-    setNewProject({
-      name: project.name,
-      description: project.description,
-      gitRepoUrl: project.gitRepoUrl,
-      gitUsername: project.gitUsername,
-    });
+
+  const handleEditProject = (proj: Project) => {
     setIsEditing(true);
-    setEditingId(project.id);
+    setEditingId(proj.id);
+    setNewProject({
+      name: proj.name,
+      description: proj.description,
+      gitRepoUrl: proj.gitRepoUrl,
+      gitUsername: proj.gitUsername
+    });
     setShowProjectForm(true);
   };
-  
-  const handleDeleteProject = async (id: string) => {
-    try {
-      await deleteProject(id);
-      toast({ title: 'Project deleted successfully' });
-      
-      if (selectedProject?.id === id) {
-        setSelectedProject(null);
-      }
-    } catch (error: any) {
-      toast({ 
-        title: 'Error',
-        description: error.message,
-        variant: 'destructive' 
+
+  const handleDeleteProject = (id: string) => {
+    deleteProject.mutate(id);
+  };
+
+  const handleEnvironmentSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isEditing && editingId) {
+      updateEnvironment.mutate({ id: editingId, payload: newEnvironment });
+    } else {
+      createEnvironment.mutate({
+        ...newEnvironment,
+        projectId: selectedProject!.id
       });
     }
   };
 
-  // Environment CRUD functions
-  const handleEnvironmentSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    try {
-      if (!selectedProject) throw new Error('No project selected');
-      
-      if (isEditing && editingId) {
-        await updateEnvironment(editingId, newEnvironment);
-        toast({ title: 'Environment updated successfully' });
-      } else {
-        if (!newEnvironment.name || !newEnvironment.host || !newEnvironment.username) {
-          throw new Error('Name, host and username are required');
-        }
-        
-        await createEnvironment({
-          projectId: selectedProject.id,
-          name: newEnvironment.name!,
-          host: newEnvironment.host!,
-          port: newEnvironment.port || 7001,
-          username: newEnvironment.username!,
-          isProduction: newEnvironment.isProduction || false,
-        });
-        toast({ title: 'Environment created successfully' });
-      }
-      
-      refetchEnvironments();
-      setShowEnvironmentForm(false);
-      setNewEnvironment({ name: '', host: '', port: 7001, username: '', isProduction: false });
-      setIsEditing(false);
-      setEditingId('');
-    } catch (error: any) {
-      toast({ 
-        title: 'Error',
-        description: error.message,
-        variant: 'destructive' 
-      });
-    }
-  };
-  
   const handleEditEnvironment = (env: ProjectEnvironment) => {
+    setIsEditing(true);
+    setEditingId(env.id);
     setNewEnvironment({
       name: env.name,
       host: env.host,
       port: env.port,
       username: env.username,
       password: env.password,
-      isProduction: env.isProduction,
+      deploymentChannel: env.deploymentChannel,
+      isProduction: env.isProduction
     });
-    setIsEditing(true);
-    setEditingId(env.id);
     setShowEnvironmentForm(true);
   };
-  
-  const handleDeleteEnvironment = async (id: string) => {
-    try {
-      await deleteEnvironment(id);
-      toast({ title: 'Environment deleted successfully' });
-      refetchEnvironments();
-      
-      if (selectedEnvironment?.id === id) {
-        setSelectedEnvironment(null);
-      }
-    } catch (error: any) {
-      toast({ 
-        title: 'Error',
-        description: error.message,
-        variant: 'destructive' 
+
+  const handleDeleteEnvironment = (id: string) => {
+    deleteEnvironment.mutate(id);
+  };
+
+  const handleOverrideSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isEditing && editingId) {
+      updateOverride.mutate({ id: editingId, payload: newOverride });
+    } else {
+      createOverride.mutate({
+        ...newOverride,
+        environmentId: selectedEnvironment!.id,
+        createdBy: user!.id
       });
     }
   };
 
-  // File Override CRUD functions
-  const handleOverrideSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    try {
-      if (!selectedEnvironment) throw new Error('No environment selected');
-      if (!user) throw new Error('User not authenticated');
-      
-      if (isEditing && editingId) {
-        await updateFileOverride(editingId, newOverride);
-        toast({ title: 'File override updated successfully' });
-      } else {
-        if (!newOverride.filename || !newOverride.originalValue || !newOverride.overrideValue) {
-          throw new Error('Filename, original value and override value are required');
-        }
-        
-        await createFileOverride({
-          environmentId: selectedEnvironment.id,
-          filename: newOverride.filename!,
-          fileType: newOverride.fileType as 'BIX' | 'PROXY',
-          originalValue: newOverride.originalValue!,
-          overrideValue: newOverride.overrideValue!,
-          createdBy: user.id,
-        });
-        toast({ title: 'File override created successfully' });
-      }
-      
-      refetchOverrides();
-      setShowOverrideForm(false);
-      setNewOverride({ filename: '', fileType: 'BIX', originalValue: '', overrideValue: '' });
-      setIsEditing(false);
-      setEditingId('');
-    } catch (error: any) {
-      toast({ 
-        title: 'Error',
-        description: error.message,
-        variant: 'destructive' 
-      });
-    }
-  };
-  
-  const handleEditOverride = (override: FileOverride) => {
-    setNewOverride({
-      filename: override.filename,
-      fileType: override.fileType,
-      originalValue: override.originalValue,
-      overrideValue: override.overrideValue,
-    });
+  const handleEditOverride = (ov: FileOverride) => {
     setIsEditing(true);
-    setEditingId(override.id);
+    setEditingId(ov.id);
+    setNewOverride({
+      filePath: ov.filePath,
+      fileType: ov.fileType,
+      content: ov.content
+    });
     setShowOverrideForm(true);
   };
-  
-  const handleDeleteOverride = async (id: string) => {
-    try {
-      await deleteFileOverride(id);
-      toast({ title: 'File override deleted successfully' });
-      refetchOverrides();
-    } catch (error: any) {
-      toast({ 
-        title: 'Error',
-        description: error.message,
-        variant: 'destructive' 
-      });
-    }
+
+  const handleDeleteOverride = (id: string) => {
+    deleteOverride.mutate(id);
   };
+  useEffect(() => {
+    if (defs) setFormDefs(defs);
+  }, [defs]);
+  useEffect(() => {
+    setSelectedEnvironment(null);
+  }, [selectedProject]);
 
+  useEffect(() => {
+    if (selectedEnvironment) {
+      refetchDefs();
+      refetchOverrides();
+    }
+  }, [selectedEnvironment, refetchDefs, refetchOverrides]);
   return (
-    <AuthGuard requiredPermission="user:view">
-      <div className="space-y-6 p-6">
-        <PageHeader 
-          title="Project Management" 
-          description="Manage projects, environments, and file overrides"
-        />
+      <AuthGuard requiredPermission="user:view">
+        <div className="space-y-6 p-6">
+          <PageHeader
+              title="Project Management"
+              description="Manage projects, environments, and file overrides"
+          />
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="mb-4">
-            <TabsTrigger value="projects">Projects</TabsTrigger>
-            <TabsTrigger value="environments" disabled={!selectedProject}>Environments</TabsTrigger>
-            <TabsTrigger value="overrides" disabled={!selectedEnvironment}>File Overrides</TabsTrigger>
-          </TabsList>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="mb-4">
+              <TabsTrigger value="projects">Projects</TabsTrigger>
+              <TabsTrigger value="environments" disabled={!selectedProject}>
+                Environments
+              </TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="projects">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle>Projects</CardTitle>
-                  <CardDescription>Manage your OSB integration projects</CardDescription>
-                </div>
-
-                <Dialog open={showProjectForm} onOpenChange={setShowProjectForm}>
-                  <DialogTrigger asChild>
-                    <Button onClick={() => {
-                      setIsEditing(false);
-                      setNewProject({ name: '', description: '', gitRepoUrl: '', gitUsername: '' });
-                    }}>
-                      <Plus className="mr-2 h-4 w-4" /> Add Project
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>{isEditing ? 'Edit' : 'Add'} Project</DialogTitle>
-                      <DialogDescription>
-                        Enter the details for your project.
-                      </DialogDescription>
-                    </DialogHeader>
-
-                    <form onSubmit={handleProjectSubmit} className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="name">Project Name</Label>
-                        <Input
-                          id="name"
-                          value={newProject.name || ''}
-                          onChange={e => setNewProject({ ...newProject, name: e.target.value })}
-                          placeholder="Enter project name"
-                          required
-                        />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="description">Description</Label>
-                        <Textarea
-                          id="description"
-                          value={newProject.description || ''}
-                          onChange={e => setNewProject({ ...newProject, description: e.target.value })}
-                          placeholder="Enter project description"
-                          rows={3}
-                        />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="gitRepo">Git Repository URL</Label>
-                        <Input
-                          id="gitRepo"
-                          value={newProject.gitRepoUrl || ''}
-                          onChange={e => setNewProject({ ...newProject, gitRepoUrl: e.target.value })}
-                          placeholder="https://github.com/user/repo.git"
-                          required
-                        />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="gitUsername">Git Username</Label>
-                        <Input
-                          id="gitUsername"
-                          value={newProject.gitUsername || ''}
-                          onChange={e => setNewProject({ ...newProject, gitUsername: e.target.value })}
-                          placeholder="Enter Git username"
-                        />
-                      </div>
-
-                      <DialogFooter>
-                        <Button type="submit">{isEditing ? 'Update' : 'Create'}</Button>
-                      </DialogFooter>
-                    </form>
-                  </DialogContent>
-                </Dialog>
-              </CardHeader>
-              
-              <CardContent>
-                <ScrollArea className="h-[500px]">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Git Repository</TableHead>
-                        <TableHead>Created</TableHead>
-                        <TableHead className="w-[100px]">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {projects.map((project) => (
-                        <TableRow 
-                          key={project.id} 
-                          className={selectedProject?.id === project.id ? 'bg-muted/50' : ''}
-                          onClick={() => {
-                            setSelectedProject(project);
-                            setActiveTab('environments');
-                          }}
-                        >
-                          <TableCell>
-                            <div className="font-medium">{project.name}</div>
-                            {project.description && (
-                              <div className="text-xs text-muted-foreground">{project.description}</div>
-                            )}
-                          </TableCell>
-                          <TableCell className="font-mono text-xs">{project.gitRepoUrl}</TableCell>
-                          <TableCell>{new Date(project.createdAt).toLocaleDateString()}</TableCell>
-                          <TableCell>
-                            <div className="flex space-x-2">
-                              <Button
-                                variant="ghost" 
-                                size="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleEditProject(project);
-                                }}
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost" 
-                                size="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDeleteProject(project.id);
-                                }}
-                              >
-                                <Trash className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                      
-                      {projects.length === 0 && (
-                        <TableRow>
-                          <TableCell colSpan={4} className="text-center py-10">
-                            <p className="text-muted-foreground">No projects found. Create your first project.</p>
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </ScrollArea>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="environments">
-            {selectedProject ? (
+            {/* === Projects === */}
+            <TabsContent value="projects">
               <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <div>
-                    <CardTitle>Environments for {selectedProject.name}</CardTitle>
-                    <CardDescription>Manage environments for this project</CardDescription>
+                <CardHeader className="flex justify-between items-center">
+                  <div className="w-full text-center">
+                    <CardTitle>Projects</CardTitle>
+                    <CardDescription>
+                      Manage your OSB integration projects
+                    </CardDescription>
                   </div>
-
-                  <Dialog open={showEnvironmentForm} onOpenChange={setShowEnvironmentForm}>
+                  <Dialog
+                      open={showProjectForm}
+                      onOpenChange={setShowProjectForm}
+                  >
                     <DialogTrigger asChild>
-                      <Button onClick={() => {
-                        setIsEditing(false);
-                        setNewEnvironment({ name: '', host: '', port: 7001, username: '', isProduction: false });
-                      }}>
-                        <Plus className="mr-2 h-4 w-4" /> Add Environment
+                      <Button
+                          onClick={() => {
+                            setIsEditing(false);
+                            setNewProject({
+                              name: '',
+                              description: '',
+                              gitRepoUrl: '',
+                              gitUsername: ''
+                            });
+                          }}
+                      >
+                        <Plus className="mr-2 h-4 w-4" /> Add Project
                       </Button>
                     </DialogTrigger>
                     <DialogContent>
                       <DialogHeader>
-                        <DialogTitle>{isEditing ? 'Edit' : 'Add'} Environment</DialogTitle>
+                        <DialogTitle>
+                          {isEditing ? 'Edit' : 'Add'} Project
+                        </DialogTitle>
                         <DialogDescription>
-                          Configure environment connection details.
+                          Enter the project details
                         </DialogDescription>
                       </DialogHeader>
-
-                      <form onSubmit={handleEnvironmentSubmit} className="space-y-4">
+                      <form
+                          onSubmit={handleProjectSubmit}
+                          className="space-y-4"
+                      >
                         <div className="space-y-2">
-                          <Label htmlFor="env-name">Environment Name</Label>
+                          <Label htmlFor="proj-name">Name</Label>
                           <Input
-                            id="env-name"
-                            value={newEnvironment.name || ''}
-                            onChange={e => setNewEnvironment({ ...newEnvironment, name: e.target.value })}
-                            placeholder="DEV, QA, PROD, etc."
-                            required
+                              id="proj-name"
+                              value={newProject.name || ''}
+                              required
+                              onChange={(e) =>
+                                  setNewProject({
+                                    ...newProject,
+                                    name: e.target.value
+                                  })
+                              }
                           />
                         </div>
-                        
                         <div className="space-y-2">
-                          <Label htmlFor="host">Host</Label>
-                          <Input
-                            id="host"
-                            value={newEnvironment.host || ''}
-                            onChange={e => setNewEnvironment({ ...newEnvironment, host: e.target.value })}
-                            placeholder="weblogic-host.example.com"
-                            required
+                          <Label htmlFor="proj-desc">Description</Label>
+                          <Textarea
+                              id="proj-desc"
+                              value={newProject.description || ''}
+                              onChange={(e) =>
+                                  setNewProject({
+                                    ...newProject,
+                                    description: e.target.value
+                                  })
+                              }
+                              rows={3}
                           />
                         </div>
-                        
                         <div className="space-y-2">
-                          <Label htmlFor="port">Port</Label>
+                          <Label htmlFor="proj-git">Git Repo URL</Label>
                           <Input
-                            id="port"
-                            type="number"
-                            value={newEnvironment.port || 7001}
-                            onChange={e => setNewEnvironment({ ...newEnvironment, port: parseInt(e.target.value) })}
-                            placeholder="7001"
-                            required
+                              id="proj-git"
+                              value={newProject.gitRepoUrl || ''}
+                              required
+                              onChange={(e) =>
+                                  setNewProject({
+                                    ...newProject,
+                                    gitRepoUrl: e.target.value
+                                  })
+                              }
                           />
                         </div>
-                        
                         <div className="space-y-2">
-                          <Label htmlFor="username">Username</Label>
+                          <Label htmlFor="proj-user">Git Username</Label>
                           <Input
-                            id="username"
-                            value={newEnvironment.username || ''}
-                            onChange={e => setNewEnvironment({ ...newEnvironment, username: e.target.value })}
-                            placeholder="admin"
-                            required
+                              id="proj-user"
+                              value={newProject.gitUsername || ''}
+                              onChange={(e) =>
+                                  setNewProject({
+                                    ...newProject,
+                                    gitUsername: e.target.value
+                                  })
+                              }
                           />
                         </div>
-                        
-                        <div className="space-y-2">
-                          <Label htmlFor="password">Password</Label>
-                          <Input
-                            id="password"
-                            type="password"
-                            value={newEnvironment.password || ''}
-                            onChange={e => setNewEnvironment({ ...newEnvironment, password: e.target.value })}
-                            placeholder="••••••••"
-                          />
-                          <p className="text-xs text-muted-foreground">Leave empty to keep current password.</p>
-                        </div>
-                        
-                        <div className="flex items-center space-x-2">
-                          <Switch
-                            id="isProduction"
-                            checked={newEnvironment.isProduction || false}
-                            onCheckedChange={(checked) => setNewEnvironment({ ...newEnvironment, isProduction: checked })}
-                          />
-                          <Label htmlFor="isProduction">Production Environment</Label>
-                        </div>
-
                         <DialogFooter>
-                          <Button type="submit">{isEditing ? 'Update' : 'Create'}</Button>
+                          <Button type="submit">
+                            {isEditing ? 'Update' : 'Create'}
+                          </Button>
                         </DialogFooter>
                       </form>
                     </DialogContent>
                   </Dialog>
                 </CardHeader>
-                
                 <CardContent>
                   <ScrollArea className="h-[500px]">
                     <Table>
                       <TableHeader>
                         <TableRow>
                           <TableHead>Name</TableHead>
-                          <TableHead>Host</TableHead>
-                          <TableHead>Username</TableHead>
-                          <TableHead>Type</TableHead>
-                          <TableHead className="w-[100px]">Actions</TableHead>
+                          <TableHead>Git Repo</TableHead>
+                          <TableHead>Created</TableHead>
+                          <TableHead>Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {projectEnvironments.map((env) => (
-                          <TableRow 
-                            key={env.id} 
-                            className={selectedEnvironment?.id === env.id ? 'bg-muted/50' : ''}
-                            onClick={() => {
-                              setSelectedEnvironment(env);
-                              setActiveTab('overrides');
-                            }}
-                          >
-                            <TableCell>
-                              <div className="font-medium">{env.name}</div>
-                            </TableCell>
-                            <TableCell>{`${env.host}:${env.port}`}</TableCell>
-                            <TableCell>{env.username}</TableCell>
-                            <TableCell>
-                              {env.isProduction ? (
-                                <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
-                                  Production
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
-                                  Non-Production
-                                </span>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex space-x-2">
-                                <Button
-                                  variant="ghost" 
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleEditEnvironment(env);
-                                  }}
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost" 
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDeleteEnvironment(env.id);
-                                  }}
-                                >
-                                  <Trash className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
+                        {projects.map((proj) => (
+                            <TableRow
+                                key={proj.id}
+                                className={
+                                  selectedProject?.id === proj.id
+                                      ? 'bg-muted/50'
+                                      : ''
+                                }
+                                onClick={() => {
+                                  setSelectedProject(proj);
+                                  setActiveTab('environments');
+                                }}
+                            >
+                              <TableCell>{proj.name}</TableCell>
+                              <TableCell className="font-mono text-xs">
+                                {proj.gitRepoUrl}
+                              </TableCell>
+                              <TableCell>
+                                {new Date(proj.createdAt).toLocaleDateString()}
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex space-x-2">
+                                  <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleEditProject(proj);
+                                      }}
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteProject(proj.id);
+                                      }}
+                                  >
+                                    <Trash className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
                         ))}
-                        
-                        {projectEnvironments.length === 0 && (
-                          <TableRow>
-                            <TableCell colSpan={5} className="text-center py-10">
-                              <p className="text-muted-foreground">No environments found. Create your first environment.</p>
-                            </TableCell>
-                          </TableRow>
-                        )}
-                      </TableBody>
-                    </Table>
-                  </ScrollArea>
-                </CardContent>
-              </Card>
-            ) : (
-              <Card className="text-center py-10">
-                <CardContent>
-                  <p className="text-muted-foreground">Please select a project first.</p>
-                  <Button 
-                    variant="outline" 
-                    className="mt-4"
-                    onClick={() => setActiveTab('projects')}
-                  >
-                    Go to Projects
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-
-          <TabsContent value="overrides">
-            {selectedEnvironment ? (
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <div>
-                    <CardTitle>File Overrides for {selectedEnvironment.name}</CardTitle>
-                    <CardDescription>Manage BIX and Proxy override settings</CardDescription>
-                  </div>
-
-                  <Dialog open={showOverrideForm} onOpenChange={setShowOverrideForm}>
-                    <DialogTrigger asChild>
-                      <Button onClick={() => {
-                        setIsEditing(false);
-                        setNewOverride({ filename: '', fileType: 'BIX', originalValue: '', overrideValue: '' });
-                      }}>
-                        <Plus className="mr-2 h-4 w-4" /> Add Override
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>{isEditing ? 'Edit' : 'Add'} File Override</DialogTitle>
-                        <DialogDescription>
-                          Configure file override settings.
-                        </DialogDescription>
-                      </DialogHeader>
-
-                      <form onSubmit={handleOverrideSubmit} className="space-y-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="filename">Filename</Label>
-                          <Input
-                            id="filename"
-                            value={newOverride.filename || ''}
-                            onChange={e => setNewOverride({ ...newOverride, filename: e.target.value })}
-                            placeholder="service.bix"
-                            required
-                          />
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <Label htmlFor="fileType">File Type</Label>
-                          <Select 
-                            value={newOverride.fileType} 
-                            onValueChange={(value) => setNewOverride({ ...newOverride, fileType: value as 'BIX' | 'PROXY' })}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select file type" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectGroup>
-                                <SelectItem value="BIX">BIX</SelectItem>
-                                <SelectItem value="PROXY">PROXY</SelectItem>
-                              </SelectGroup>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <Label htmlFor="originalValue">Original Value</Label>
-                          <Input
-                            id="originalValue"
-                            value={newOverride.originalValue || ''}
-                            onChange={e => setNewOverride({ ...newOverride, originalValue: e.target.value })}
-                            placeholder="192.168.1.1"
-                            required
-                          />
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <Label htmlFor="overrideValue">Override Value</Label>
-                          <Input
-                            id="overrideValue"
-                            value={newOverride.overrideValue || ''}
-                            onChange={e => setNewOverride({ ...newOverride, overrideValue: e.target.value })}
-                            placeholder="10.0.0.1"
-                            required
-                          />
-                        </div>
-
-                        <DialogFooter>
-                          <Button type="submit">{isEditing ? 'Update' : 'Create'}</Button>
-                        </DialogFooter>
-                      </form>
-                    </DialogContent>
-                  </Dialog>
-                </CardHeader>
-                
-                <CardContent>
-                  <ScrollArea className="h-[500px]">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Filename</TableHead>
-                          <TableHead>Type</TableHead>
-                          <TableHead>Original Value</TableHead>
-                          <TableHead>Override Value</TableHead>
-                          <TableHead className="w-[100px]">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {environmentOverrides.map((override) => (
-                          <TableRow key={override.id}>
-                            <TableCell>
-                              <div className="font-medium">{override.filename}</div>
-                            </TableCell>
-                            <TableCell>
-                              <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium
-                                ${override.fileType === 'BIX' 
-                                  ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400'
-                                  : 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'}`}
+                        {projects.length === 0 && (
+                            <TableRow>
+                              <TableCell
+                                  colSpan={4}
+                                  className="text-center py-10"
                               >
-                                {override.fileType}
-                              </span>
-                            </TableCell>
-                            <TableCell className="font-mono text-xs">{override.originalValue}</TableCell>
-                            <TableCell className="font-mono text-xs">{override.overrideValue}</TableCell>
-                            <TableCell>
-                              <div className="flex space-x-2">
-                                <Button
-                                  variant="ghost" 
-                                  size="sm"
-                                  onClick={() => handleEditOverride(override)}
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost" 
-                                  size="sm"
-                                  onClick={() => handleDeleteOverride(override.id)}
-                                >
-                                  <Trash className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                        
-                        {environmentOverrides.length === 0 && (
-                          <TableRow>
-                            <TableCell colSpan={5} className="text-center py-10">
-                              <p className="text-muted-foreground">No file overrides found.</p>
-                            </TableCell>
-                          </TableRow>
+                                <p className="text-muted-foreground">
+                                  No projects found.
+                                </p>
+                              </TableCell>
+                            </TableRow>
                         )}
                       </TableBody>
                     </Table>
                   </ScrollArea>
                 </CardContent>
               </Card>
-            ) : (
-              <Card className="text-center py-10">
-                <CardContent>
-                  <p className="text-muted-foreground">Please select an environment first.</p>
-                  <Button 
-                    variant="outline" 
-                    className="mt-4"
-                    onClick={() => setActiveTab('environments')}
-                  >
-                    Go to Environments
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-        </Tabs>
-      </div>
-    </AuthGuard>
+            </TabsContent>
+
+            {/* === Environments === */}
+            {/* === Environments === */}
+            {/* === Environments === */}
+            <TabsContent value="environments">
+              {selectedProject ? (
+                  <>
+                    {/* — List + Add Environment — */}
+                    <Card className="mb-6">
+                      <CardHeader className="flex justify-between items-center">
+                        <div className="w-full text-center">
+                          <CardTitle>Environments for {selectedProject.name}</CardTitle>
+                          <CardDescription>Manage environments for this project</CardDescription>
+                        </div>
+                        <Dialog open={showEnvironmentForm} onOpenChange={setShowEnvironmentForm}>
+                          <DialogTrigger asChild>
+                            <Button
+                                onClick={() => {
+                                  setIsEditing(false);
+                                  setNewEnvironment({
+                                    name: '',
+                                    host: '',
+                                    port: 7001,
+                                    username: '',
+                                    deploymentChannel: '',
+                                    isProduction: false
+                                  });
+                                }}
+                            >
+                              <Plus className="mr-2 h-4 w-4" /> Add Environment
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>{isEditing ? 'Edit' : 'Add'} Environment</DialogTitle>
+                              <DialogDescription>
+                                Configure environment connection details.
+                              </DialogDescription>
+                            </DialogHeader>
+                            <form onSubmit={handleEnvironmentSubmit} className="space-y-4">
+                              <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                  <Label htmlFor="env-name">Name</Label>
+                                  <Input
+                                      id="env-name"
+                                      value={newEnvironment.name || ''}
+                                      required
+                                      onChange={e =>
+                                          setNewEnvironment({ ...newEnvironment, name: e.target.value })
+                                      }
+                                      placeholder="DEV, QA, PROD"
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label htmlFor="env-channel">Deployment Channel</Label>
+                                  <Input
+                                      id="env-channel"
+                                      value={newEnvironment.deploymentChannel || ''}
+                                      required
+                                      onChange={e =>
+                                          setNewEnvironment({ ...newEnvironment, deploymentChannel: e.target.value })
+                                      }
+                                      placeholder="t3"
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label htmlFor="env-host">Host</Label>
+                                  <Input
+                                      id="env-host"
+                                      value={newEnvironment.host || ''}
+                                      required
+                                      onChange={e =>
+                                          setNewEnvironment({ ...newEnvironment, host: e.target.value })
+                                      }
+                                      placeholder="weblogic-host.example.com"
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label htmlFor="env-port">Port</Label>
+                                  <Input
+                                      id="env-port"
+                                      type="number"
+                                      value={newEnvironment.port || 7001}
+                                      required
+                                      onChange={e =>
+                                          setNewEnvironment({ ...newEnvironment, port: Number(e.target.value) })
+                                      }
+                                      placeholder="7001"
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label htmlFor="env-user">Username</Label>
+                                  <Input
+                                      id="env-user"
+                                      value={newEnvironment.username || ''}
+                                      required
+                                      onChange={e =>
+                                          setNewEnvironment({ ...newEnvironment, username: e.target.value })
+                                      }
+                                      placeholder="admin"
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label htmlFor="env-pass">Password</Label>
+                                  <Input
+                                      id="env-pass"
+                                      type="password"
+                                      value={newEnvironment.password || ''}
+                                      onChange={e =>
+                                          setNewEnvironment({ ...newEnvironment, password: e.target.value })
+                                      }
+                                      placeholder="••••••••"
+                                  />
+                                  <p className="text-xs text-muted-foreground">
+                                    Leave blank to keep current password.
+                                  </p>
+                                </div>
+                                <div className="flex items-center space-x-2 col-span-2">
+                                  <Switch
+                                      id="env-prod"
+                                      checked={newEnvironment.isProduction || false}
+                                      onCheckedChange={v =>
+                                          setNewEnvironment({ ...newEnvironment, isProduction: v })
+                                      }
+                                  />
+                                  <Label htmlFor="env-prod">Production Environment</Label>
+                                </div>
+                              </div>
+                              <DialogFooter>
+                                <Button type="submit">{isEditing ? 'Update' : 'Create'}</Button>
+                              </DialogFooter>
+                            </form>
+                          </DialogContent>
+                        </Dialog>
+                      </CardHeader>
+
+                      <CardContent>
+                        <ScrollArea className="h-[200px]">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Name</TableHead>
+                                <TableHead>Host</TableHead>
+                                <TableHead>Port</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {projectEnvironments.map(env => (
+                                  <TableRow
+                                      key={env.id}
+                                      onClick={() => setSelectedEnvironment(env)}
+                                      className={selectedEnvironment?.id === env.id ? 'bg-muted/50' : ''}
+                                      style={{ cursor: 'pointer' }}
+                                  >
+                                    <TableCell>{env.name}</TableCell>
+                                    <TableCell>{env.host}</TableCell>
+                                    <TableCell>{env.port}</TableCell>
+                                  </TableRow>
+                              ))}
+                              {projectEnvironments.length === 0 && (
+                                  <TableRow>
+                                    <TableCell colSpan={3} className="text-center py-10">
+                                      <p className="text-muted-foreground">No environments found.</p>
+                                    </TableCell>
+                                  </TableRow>
+                              )}
+                            </TableBody>
+                          </Table>
+                        </ScrollArea>
+                      </CardContent>
+                    </Card>
+
+                    {selectedEnvironment ? (
+                        <Card>
+                          <CardHeader className="flex justify-between items-center">
+                            <div className="w-full text-center">
+                              <CardTitle>Configure {selectedEnvironment.name}</CardTitle>
+                              <CardDescription>Definitions & Overrides</CardDescription>
+                            </div>
+                          </CardHeader>
+                          <CardContent>
+                            <Tabs
+                                value={innerTab}
+                                onValueChange={value => setInnerTab(value as 'definitions' | 'overrides')}
+                            >
+                              <TabsList>
+                                <TabsTrigger value="definitions">Definitions</TabsTrigger>
+                                <TabsTrigger value="overrides">Overrides</TabsTrigger>
+                              </TabsList>
+
+                              {/* Definitions Pane */}
+                              <TabsContent value="definitions" className="space-y-6">
+                                {loadingDefs || !formDefs ? (
+                                    <p>Loading definitions…</p>
+                                ) : (
+                                    <form
+                                        onSubmit={e => {
+                                          e.preventDefault();
+                                          updateDefs.mutate(formDefs);
+                                        }}
+                                        className="space-y-4"
+                                    >
+                                      {/* Artifacts & WLST */}
+                                      <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                          <Label>Artifacts Folder</Label>
+                                          <Input
+                                              value={formDefs.artifactsFolder || ''}
+                                              onChange={e =>
+                                                  setFormDefs({ ...formDefs, artifactsFolder: e.target.value })
+                                              }
+                                          />
+                                        </div>
+                                        <div className="space-y-2">
+                                          <Label>WLST Tool Path</Label>
+                                          <Input
+                                              value={formDefs.wlstToolPath || ''}
+                                              onChange={e =>
+                                                  setFormDefs({ ...formDefs, wlstToolPath: e.target.value })
+                                              }
+                                          />
+                                        </div>
+                                      </div>
+
+                                      {/* Notify Switch */}
+                                      <div className="flex items-center space-x-2">
+                                        <Switch
+                                            checked={formDefs.notifyOnComplete}
+                                            onCheckedChange={v =>
+                                                setFormDefs({ ...formDefs, notifyOnComplete: v })
+                                            }
+                                        />
+                                        <Label>Notify on Complete</Label>
+                                      </div>
+
+                                      {/* SMTP Settings */}
+                                      <div className="grid grid-cols-3 gap-4">
+                                        <div>
+                                          <Label>SMTP Host</Label>
+                                          <Input
+                                              value={formDefs.smtpHost || ''}
+                                              onChange={e =>
+                                                  setFormDefs({ ...formDefs, smtpHost: e.target.value })
+                                              }
+                                          />
+                                        </div>
+                                        <div>
+                                          <Label>SMTP Port</Label>
+                                          <Input
+                                              type="number"
+                                              value={formDefs.smtpPort || ''}
+                                              onChange={e =>
+                                                  setFormDefs({ ...formDefs, smtpPort: Number(e.target.value) })
+                                              }
+                                          />
+                                        </div>
+                                        <div>
+                                          <Label>SMTP Username</Label>
+                                          <Input
+                                              value={formDefs.smtpUsername || ''}
+                                              onChange={e =>
+                                                  setFormDefs({ ...formDefs, smtpUsername: e.target.value })
+                                              }
+                                          />
+                                        </div>
+                                      </div>
+                                      <div className="space-y-2">
+                                        <Label>SMTP Password</Label>
+                                        <Input
+                                            type="password"
+                                            value={formDefs.smtpPassword || ''}
+                                            onChange={e =>
+                                                setFormDefs({ ...formDefs, smtpPassword: e.target.value })
+                                            }
+                                        />
+                                      </div>
+
+                                      {/* Success Recipients */}
+                                      <div className="space-y-2">
+                                        <Label>Success Email Subject</Label>
+                                        <Input
+                                            value={formDefs.successEmailSubject || ''}
+                                            onChange={e =>
+                                                setFormDefs({ ...formDefs, successEmailSubject: e.target.value })
+                                            }
+                                        />
+                                      </div>
+                                      <div className="space-y-2">
+                                        <Label>Success Recipients</Label>
+                                        <div className="flex flex-wrap gap-2">
+                                          {formDefs.successRecipients.map(email => (
+                                              <Badge
+                                                  key={email}
+                                                  onClick={() =>
+                                                      setFormDefs({
+                                                        ...formDefs,
+                                                        successRecipients: formDefs.successRecipients.filter(e => e !== email)
+                                                      })
+                                                  }
+                                              >
+                                                {email}
+                                              </Badge>
+                                          ))}
+                                          <Input
+                                              placeholder="Type and press Enter"
+                                              onKeyDown={e => {
+                                                if (e.key === 'Enter' && e.currentTarget.value) {
+                                                  e.preventDefault();
+                                                  setFormDefs({
+                                                    ...formDefs,
+                                                    successRecipients: [...formDefs.successRecipients, e.currentTarget.value]
+                                                  });
+                                                  e.currentTarget.value = '';
+                                                }
+                                              }}
+                                          />
+                                        </div>
+                                      </div>
+
+                                      {/* Failure Recipients */}
+                                      <div className="space-y-2">
+                                        <Label>Failure Recipients</Label>
+                                        <div className="flex flex-wrap gap-2">
+                                          {formDefs.failureRecipients.map(email => (
+                                              <Badge
+                                                  key={email}
+                                                  onClick={() =>
+                                                      setFormDefs({
+                                                        ...formDefs,
+                                                        failureRecipients: formDefs.failureRecipients.filter(e => e !== email)
+                                                      })
+                                                  }
+                                              >
+                                                {email}
+                                              </Badge>
+                                          ))}
+                                          <Input
+                                              placeholder="Type and press Enter"
+                                              onKeyDown={e => {
+                                                if (e.key === 'Enter' && e.currentTarget.value) {
+                                                  e.preventDefault();
+                                                  setFormDefs({
+                                                    ...formDefs,
+                                                    failureRecipients: [...formDefs.failureRecipients, e.currentTarget.value]
+                                                  });
+                                                  e.currentTarget.value = '';
+                                                }
+                                              }}
+                                          />
+                                        </div>
+                                      </div>
+
+                                      <DialogFooter>
+                                        <Button type="submit" disabled={updateDefs.status === 'loading'}>
+                                          {updateDefs.status === 'loading' ? 'Saving…' : 'Save Definitions'}
+                                        </Button>
+                                      </DialogFooter>
+                                    </form>
+                                )}
+                              </TabsContent>
+
+                              {/* Overrides Pane */}
+                              <TabsContent value="overrides">
+                                <ScrollArea className="h-[400px]">
+                                  <Table>
+                                    <TableHeader>
+                                      <TableRow>
+                                        <TableHead>File Path</TableHead>
+                                        <TableHead>Type</TableHead>
+                                        <TableHead>Content</TableHead>
+                                        <TableHead className="text-right">Actions</TableHead>
+                                      </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                      {environmentOverrides.map(ov => (
+                                          <TableRow key={ov.id}>
+                                            <TableCell>{ov.filePath}</TableCell>
+                                            <TableCell>
+                            <span
+                                className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${
+                                    ov.fileType === 'BIX'
+                                        ? 'bg-purple-100 text-purple-800'
+                                        : 'bg-blue-100 text-blue-800'
+                                }`}
+                            >
+                              {ov.fileType}
+                            </span>
+                                            </TableCell>
+                                            <TableCell className="font-mono text-xs">{ov.content}</TableCell>
+                                            <TableCell className="text-right space-x-2">
+                                              <Button variant="ghost" size="sm" onClick={() => handleEditOverride(ov)}>
+                                                <Edit className="h-4 w-4" />
+                                              </Button>
+                                              <Button variant="ghost" size="sm" onClick={() => handleDeleteOverride(ov.id)}>
+                                                <Trash className="h-4 w-4" />
+                                              </Button>
+                                            </TableCell>
+                                          </TableRow>
+                                      ))}
+                                      {environmentOverrides.length === 0 && (
+                                          <TableRow>
+                                            <TableCell colSpan={4} className="text-center py-10">
+                                              <p className="text-muted-foreground">No overrides found.</p>
+                                            </TableCell>
+                                          </TableRow>
+                                      )}
+                                    </TableBody>
+                                  </Table>
+                                </ScrollArea>
+                              </TabsContent>
+                            </Tabs>
+                          </CardContent>
+                        </Card>
+                    ) : (
+                        <Card className="text-center py-10">
+                          <CardContent>
+                            <p className="text-muted-foreground">Please select an environment first.</p>
+                            <Button variant="outline" onClick={() => setActiveTab('environments')}>
+                              Go to Environments
+                            </Button>
+                          </CardContent>
+                        </Card>
+                    )}
+                  </>
+              ) : (
+                  <Card className="text-center py-10">
+                    <CardContent>
+                      <p className="text-muted-foreground">Please select a project first.</p>
+                      <Button variant="outline" onClick={() => setActiveTab('projects')}>
+                        Go to Projects
+                      </Button>
+                    </CardContent>
+                  </Card>
+              )}
+            </TabsContent>
+
+          </Tabs>
+        </div>
+      </AuthGuard>
   );
 };
 

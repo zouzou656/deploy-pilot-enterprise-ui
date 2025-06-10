@@ -7,7 +7,6 @@ import AppHeader from './AppHeader';
 import CommandPalette from '../ui-custom/CommandPalette';
 import useThemeStore from '@/stores/themeStore';
 import useAuthStore from '@/stores/authStore';
-import { useProject } from '@/contexts/ProjectContext';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -24,14 +23,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({
   const location = useLocation();
   const { theme } = useThemeStore();
   const { user, checkPermission, hasPermission } = useAuthStore();
-  const { fetchProjects } = useProject();
 
-  useEffect(() => {
-    // Refresh projects when layout mounts or user changes
-    if (user) {
-      fetchProjects();
-    }
-  }, [user, fetchProjects]);
+
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

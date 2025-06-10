@@ -1,32 +1,34 @@
-
 import React, { useEffect, useRef } from 'react';
 
 interface TerminalConsoleProps {
-  logs?: string;
-  className?: string;
+  /** 
+   * All log lines concatenated with newline `\n` separators. 
+   * The component will split on `\n` and render each line. 
+   */
+  logs: string;
+  /** Optional height override (defaults to 100%). */
+  height?: string | number;
 }
 
-const TerminalConsole = ({ logs, className = '' }: TerminalConsoleProps) => {
-  const terminalRef = useRef<HTMLDivElement>(null);
+const TerminalConsole: React.FC<TerminalConsoleProps> = ({ logs, height = '100%' }) => {
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
+  // Auto-scroll to bottom whenever `logs` changes
   useEffect(() => {
-    if (terminalRef.current) {
-      terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
+    if (containerRef.current) {
+      containerRef.current.scrollTop = containerRef.current.scrollHeight;
     }
   }, [logs]);
 
   return (
-    <div 
-      ref={terminalRef}
-      className={`font-mono text-sm bg-black text-green-400 p-4 overflow-auto h-full ${className}`}
+    <div
+      ref={containerRef}
+      className="bg-black text-green-200 font-mono text-sm p-2 overflow-auto"
+      style={{ height }}
     >
-      {logs ? logs.split('\n').map((line, index) => (
-        <div key={index} className="whitespace-pre-wrap">
-          {line}
-        </div>
-      )) : (
-        <div>No logs available</div>
-      )}
+      {logs.split('\n').map((line, idx) => (
+        <div key={idx}>{line}</div>
+      ))}
     </div>
   );
 };

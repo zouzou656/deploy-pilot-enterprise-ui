@@ -15,5 +15,9 @@
     "allowJs": true,
     "noUnusedLocals": false,
     "strictNullChecks": false
-  }
+  },
+   "include": [
+    "src",
+    "react-terminal-ui.d.ts"
+  ]
 }

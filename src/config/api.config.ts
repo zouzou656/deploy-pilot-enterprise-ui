@@ -27,6 +27,9 @@ export const API_CONFIG = {
       ADD_PERMISSION: '/api/auth/permissions/user/:userId/:permId',
       REMOVE_PERMISSION: '/api/auth/permissions/user/:userId/:permId',
     },
+    CONFIG: {
+      FILES: '/api/config/files',
+    },
     // Role management
     ROLES: {
       LIST: '/api/auth/roles',
@@ -61,23 +64,36 @@ export const API_CONFIG = {
     ENVIRONMENTS: {
       LIST: '/api/projects/:projectId/environments',
       GET: '/api/environments/:id',
-      CREATE: '/api/projects/:projectId/environments',
+      CREATE: '/api/environments',
       UPDATE: '/api/environments/:id',
       DELETE: '/api/environments/:id',
     },
+    DEFINITIONS: {
+      GET:    '/api/environments/:environmentId/definitions',
+      UPDATE: '/api/environments/:environmentId/definitions',
+    },
     // File overrides
     OVERRIDES: {
-      LIST: '/api/environments/:environmentId/overrides',
-      GET: '/api/overrides/:id',
-      CREATE: '/api/environments/:environmentId/overrides',
-      UPDATE: '/api/overrides/:id',
-      DELETE: '/api/overrides/:id',
+      LIST:   '/api/environments/:environmentId/file-overrides',
+      CREATE: '/api/environments/:environmentId/file-overrides',
+      UPDATE: '/api/environments/:environmentId/file-overrides/:id',
+      DELETE: '/api/environments/:environmentId/file-overrides/:id',
     },
     // JAR generation
     JAR: {
-      GENERATE: '/api/jar/generate',
-      STATUS: '/api/jar/:id/status',
-      LIST: '/api/jar',
+      GENERATE: '/api/jar-generation',                
+      STATUS: '/api/jar-generation/:jobId/status',    
+      DOWNLOAD: '/api/jar/generate/:jobId/download' 
+    },
+    GIT: {
+      BRANCHES:       '/api/git/branches?projectId=:projectId',
+      COMMITS:        '/api/git/commits?projectId=:projectId&branch=:branch',
+      COMMIT:         '/api/git/commit/:sha?projectId=:projectId',
+      COMPARE:        '/api/git/compare?projectId=:projectId&baseSha=:baseSha&headSha=:headSha',
+      FULL:           '/api/git/full?projectId=:projectId&branch=:branch',
+      TREE:           '/api/git/tree?projectId=:projectId&branch=:branch',
+      COMPARE_FILES:  '/api/git/compare-files',
+      FILE_CONTENT:   '/api/git/file-content?projectId=:projectId&branch=:branch&sha=:sha&path=:path'
     }
   },
 };

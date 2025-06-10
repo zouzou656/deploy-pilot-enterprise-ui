@@ -20,7 +20,7 @@ export interface ProjectEnvironment {
   port: number;
   username: string;
   password?: string; // This would be securely stored
-  defaultChannel?: string;
+  deploymentChannel?: string;
   isProduction: boolean;
   createdAt: string;
   updatedAt: string;
@@ -29,10 +29,9 @@ export interface ProjectEnvironment {
 export interface FileOverride {
   id: string;
   environmentId: string;
-  filename: string;
+  filePath: string;
   fileType: 'BIX' | 'PROXY';
-  originalValue: string;
-  overrideValue: string;
+  content: string;
   createdAt: string;
   updatedAt: string;
   createdBy: string;

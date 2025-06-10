@@ -1,3 +1,4 @@
+// src/services/api.client.ts
 
 import { createApiUrl } from '@/config/api.config';
 import useAuthStore from '@/stores/authStore';
@@ -10,6 +11,7 @@ interface ApiRequestOptions {
   params?: Record<string, string>;
   headers?: Record<string, string>;
   requiresAuth?: boolean;
+  responseType?: 'json' | 'text';   // ← NEW: allow requesting text
 }
 
 interface ApiResponse<T> {
@@ -28,101 +30,155 @@ class ApiClient {
   }
 
   /**
-   * Make an API request
+   * Make an API request, optionally as JSON or plain text.
    */
-  async request<T = any>(endpoint: string, options: ApiRequestOptions = {}): Promise<ApiResponse<T>> {
+  async request<T = any>(
+    endpoint: string,
+    options: ApiRequestOptions = {}
+  ): Promise<ApiResponse<T>> {
     const {
       method = 'GET',
       body,
       params,
       headers = {},
-      requiresAuth = true
+      requiresAuth = true,
+      responseType = 'json',   // ← default to JSON
     } = options;
 
     try {
-      // Create full URL with path parameters
+      // Build full URL (with query params)
       const url = createApiUrl(endpoint, params);
-      
-      // Set up request headers
+
+      // Prepare request headers
       const requestHeaders: HeadersInit = {
         'Content-Type': 'application/json',
-        ...headers
+        ...headers,
       };
 
-      // Add auth token if required
       if (requiresAuth) {
         const token = this.getAuthToken();
         if (!token) {
           return {
             data: null,
             error: 'Authentication required',
-            status: 401
+            status: 401,
           };
         }
         requestHeaders.Authorization = `Bearer ${token}`;
       }
 
-      // Make the request
+      // Send the request
       const response = await fetch(url, {
         method,
         headers: requestHeaders,
-        body: body ? JSON.stringify(body) : undefined
+        body: body ? JSON.stringify(body) : undefined,
       });
 
-      // Handle different status codes
+      // If 204 No Content, return immediately
       if (response.status === 204) {
-        // No content response
         return {
           data: null,
           error: null,
-          status: response.status
+          status: response.status,
         };
       }
 
-      // Try to parse response as JSON
-      let data: T | null = null;
-      let error: string | null = null;
-
-      if (response.headers.get('content-type')?.includes('application/json')) {
-        const responseData = await response.json();
-        if (response.ok) {
-          data = responseData;
-        } else {
-          error = responseData.message || responseData.error || 'An unknown error occurred';
+      // If user asked for text, do response.text()
+      if (responseType === 'text') {
+        if (!response.ok) {
+          return {
+            data: null,
+            error: `HTTP Error ${response.status}: ${response.statusText}`,
+            status: response.status,
+          };
         }
-      } else if (!response.ok) {
-        error = `HTTP Error ${response.status}: ${response.statusText}`;
+        const textData = (await response.text()) as unknown as T;
+        return {
+          data: textData,
+          error: null,
+          status: response.status,
+        };
       }
 
+      // Otherwise, responseType is 'json'
+      // Only attempt JSON parse when content-type is JSON
+      const contentType = response.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        const jsonData = await response.json();
+        if (response.ok) {
+          return {
+            data: jsonData as T,
+            error: null,
+            status: response.status,
+          };
+        } else {
+          // Try to extract a message from JSON body
+          const errMessage =
+            (jsonData as any).message ||
+            (jsonData as any).error ||
+            `HTTP ${response.status}`;
+          return {
+            data: null,
+            error: errMessage,
+            status: response.status,
+          };
+        }
+      }
+
+      // If not JSON and not text, but we requested JSON, it's an error
+      if (!response.ok) {
+        return {
+          data: null,
+          error: `HTTP Error ${response.status}: ${response.statusText}`,
+          status: response.status,
+        };
+      }
+
+      // If we get here, response is non-JSON (e.g. XML) but user didn't ask for text front
+      // Return null data with no error (or you could return raw text if you want)
       return {
-        data,
-        error,
-        status: response.status
+        data: null,
+        error: null,
+        status: response.status,
       };
     } catch (err) {
       console.error('API request failed:', err);
       return {
         data: null,
         error: err instanceof Error ? err.message : 'Network error',
-        status: 0
+        status: 0,
       };
     }
   }
 
-  // Convenience methods
-  async get<T = any>(endpoint: string, options: Omit<ApiRequestOptions, 'method' | 'body'> = {}): Promise<ApiResponse<T>> {
+  // Convenience methods:
+  async get<T = any>(
+    endpoint: string,
+    options: Omit<ApiRequestOptions, 'method' | 'body'> = {}
+  ): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, { ...options, method: 'GET' });
   }
 
-  async post<T = any>(endpoint: string, body: object, options: Omit<ApiRequestOptions, 'method' | 'body'> = {}): Promise<ApiResponse<T>> {
+  async post<T = any>(
+    endpoint: string,
+    body: object,
+    options: Omit<ApiRequestOptions, 'method' | 'body'> = {}
+  ): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, { ...options, method: 'POST', body });
   }
 
-  async put<T = any>(endpoint: string, body: object, options: Omit<ApiRequestOptions, 'method' | 'body'> = {}): Promise<ApiResponse<T>> {
+  async put<T = any>(
+    endpoint: string,
+    body: object,
+    options: Omit<ApiRequestOptions, 'method' | 'body'> = {}
+  ): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, { ...options, method: 'PUT', body });
   }
 
-  async delete<T = any>(endpoint: string, options: Omit<ApiRequestOptions, 'method'> = {}): Promise<ApiResponse<T>> {
+  async delete<T = any>(
+    endpoint: string,
+    options: Omit<ApiRequestOptions, 'method'> = {}
+  ): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, { ...options, method: 'DELETE' });
   }
 }
